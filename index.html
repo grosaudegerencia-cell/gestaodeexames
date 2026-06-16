@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard de Evolução de Exames — GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="data.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+          <circle cx="24" cy="24" r="22" fill="#fff" fill-opacity=".15"/>
+          <path d="M24 10 C24 10 12 16 12 26 C12 34 18 38 24 38 C30 38 36 34 36 26 C36 16 24 10 24 10Z" fill="white" fill-opacity=".9"/>
+          <rect x="21" y="20" width="6" height="14" rx="3" fill="#1a6e3c"/>
+          <rect x="17" y="24" width="14" height="6" rx="3" fill="#1a6e3c"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-main">GRO Saúde</span>
+        <span class="logo-sub">Gestão de Riscos Ocupacionais</span>
+      </div>
+    </div>
+    <div class="header-title">
+      <h1>Dashboard de Evolução de Exames</h1>
+      <p id="headerSubtitle">Carregando dados...</p>
+    </div>
+    <div class="header-actions">
+      <div class="last-update">
+        <span class="update-label">Atualizado em</span>
+        <span id="dataAtual" class="update-date"></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- FILTROS -->
+<section class="filters-bar">
+  <div class="filters-inner">
+    <div class="filter-group">
+      <label for="filterAno">Ano</label>
+      <select id="filterAno">
+        <option value="todos">Todos</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterMes">Mês</label>
+      <select id="filterMes">
+        <option value="todos">Todos</option>
+        <option value="1">Janeiro</option>
+        <option value="2">Fevereiro</option>
+        <option value="3">Março</option>
+        <option value="4">Abril</option>
+        <option value="5">Maio</option>
+        <option value="6" selected>Junho</option>
+        <option value="7">Julho</option>
+        <option value="8">Agosto</option>
+        <option value="9">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterTipo">Tipo de Exame</label>
+      <select id="filterTipo">
+        <option value="todos">Todos</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterEmpresa">Empresa</label>
+      <select id="filterEmpresa">
+        <option value="todas">Todas</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="filterStatus">Status</label>
+      <select id="filterStatus">
+        <option value="todos">Todos</option>
+        <option value="Realizado">Realizado</option>
+        <option value="Agendado">Agendado</option>
+      </select>
+    </div>
+    <button class="btn-reset" onclick="resetFiltros()">Limpar Filtros</button>
+  </div>
+</section>
+
+<!-- KPI CARDS -->
+<section class="kpi-section">
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-primary">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Total de Exames</span>
+        <span class="kpi-value" id="kpiTotal">—</span>
+        <span class="kpi-trend" id="kpiTotalTrend"></span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-success">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Realizados</span>
+        <span class="kpi-value" id="kpiRealizados">—</span>
+        <span class="kpi-sub" id="kpiRealizadosPct"></span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-warning">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Agendados</span>
+        <span class="kpi-value" id="kpiAgendados">—</span>
+        <span class="kpi-sub" id="kpiAgendadosPct"></span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-info">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Empresas Atendidas</span>
+        <span class="kpi-value" id="kpiEmpresas">—</span>
+        <span class="kpi-sub">no período</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-purple">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Média Diária</span>
+        <span class="kpi-value" id="kpiMedia">—</span>
+        <span class="kpi-sub">exames/dia</span>
+      </div>
+    </div>
+    <div class="kpi-card kpi-teal">
+      <div class="kpi-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-label">Tipos de Exame</span>
+        <span class="kpi-value" id="kpiTipos">—</span>
+        <span class="kpi-sub">categorias distintas</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHARTS ROW 1 -->
+<section class="charts-section">
+  <div class="charts-grid-2">
+
+    <!-- EVOLUÇÃO ANUAL -->
+    <div class="chart-card chart-large">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Evolução Anual</h2>
+          <p class="chart-desc">Total de exames por ano</p>
+        </div>
+        <div class="chart-badge badge-green">Todos os anos</div>
+      </div>
+      <div class="chart-body">
+        <canvas id="chartAnual"></canvas>
+      </div>
+    </div>
+
+    <!-- EVOLUÇÃO MENSAL -->
+    <div class="chart-card chart-large">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Evolução Mensal</h2>
+          <p class="chart-desc">Exames realizados mês a mês</p>
+        </div>
+        <div class="chart-badge badge-blue" id="badgeMensal">2025–2026</div>
+      </div>
+      <div class="chart-body">
+        <canvas id="chartMensal"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- CHARTS ROW 2 -->
+<section class="charts-section">
+  <div class="charts-grid-3">
+
+    <!-- POR TIPO -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Por Tipo de Exame</h2>
+          <p class="chart-desc">Distribuição por categoria</p>
+        </div>
+      </div>
+      <div class="chart-body chart-body-donut">
+        <canvas id="chartTipo"></canvas>
+      </div>
+    </div>
+
+    <!-- POR DESCRIÇÃO -->
+    <div class="chart-card chart-wide">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Por Descrição de Exame</h2>
+          <p class="chart-desc">Quantidade por procedimento realizado</p>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="chartDescricao"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- CHARTS ROW 3 -->
+<section class="charts-section">
+  <div class="charts-grid-2">
+
+    <!-- EVOLUÇÃO SEMANAL -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Evolução Semanal</h2>
+          <p class="chart-desc">Exames por semana no período selecionado</p>
+        </div>
+        <div class="chart-badge badge-green" id="badgeSemanal">Últimas 12 semanas</div>
+      </div>
+      <div class="chart-body">
+        <canvas id="chartSemanal"></canvas>
+      </div>
+    </div>
+
+    <!-- POR EMPRESA -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h2 class="chart-title">Top Empresas</h2>
+          <p class="chart-desc">Empresas com mais exames realizados</p>
+        </div>
+      </div>
+      <div class="chart-body">
+        <canvas id="chartEmpresa"></canvas>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- TABLE -->
+<section class="table-section">
+  <div class="table-card">
+    <div class="table-header">
+      <div>
+        <h2 class="chart-title">Detalhamento de Exames</h2>
+        <p class="chart-desc">Registro completo dos exames no período filtrado</p>
+      </div>
+      <div class="table-controls">
+        <input type="text" id="tableSearch" placeholder="Buscar paciente, empresa ou exame..." class="search-input" />
+        <span id="tableCount" class="table-count"></span>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable('data')">Data <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('tipo')">Tipo de Exame <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('descricao')">Descrição <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('empresa')">Empresa <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('paciente')">Paciente <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('status')">Status <span class="sort-icon">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-pagination">
+      <button id="btnPrev" onclick="prevPage()">← Anterior</button>
+      <span id="pageInfo"></span>
+      <button id="btnNext" onclick="nextPage()">Próximo →</button>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© 2026 GRO Saúde — Gestão de Riscos Ocupacionais. Todos os direitos reservados.</span>
+    <span class="footer-hint">Os dados são exemplificativos. Atualize o arquivo <code>data.js</code> com as agendas reais para visualização completa.</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
