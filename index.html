@@ -217,6 +217,85 @@
   </div>
 </section>
 
+<!-- COMPARATIVO PERSONALIZADO -->
+<section class="charts-section">
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h2 class="chart-title">Comparativo Personalizado</h2>
+        <p class="chart-desc">Escolha manualmente o que comparar e veja quantidades e variação percentual</p>
+      </div>
+      <div class="chart-badge badge-blue">Interativo</div>
+    </div>
+    <div class="comp-body">
+      <!-- Controles -->
+      <div class="comp-controls">
+        <div class="comp-field">
+          <label>Comparar por</label>
+          <select id="compDim" onchange="popularComparacao()">
+            <option value="ano">Ano</option>
+            <option value="mes">Mês (de um ano)</option>
+            <option value="tipo">Tipo de Exame</option>
+            <option value="empresa">Empresa</option>
+            <option value="procedimento">Procedimento</option>
+          </select>
+        </div>
+        <div class="comp-field" id="compAnoBox" style="display:none">
+          <label>Ano de referência</label>
+          <select id="compAno" onchange="calcularComparacao()"></select>
+        </div>
+        <div class="comp-field">
+          <label id="lblA">Opção A</label>
+          <select id="compA" onchange="calcularComparacao()"></select>
+        </div>
+        <div class="comp-vs">×</div>
+        <div class="comp-field">
+          <label id="lblB">Opção B</label>
+          <select id="compB" onchange="calcularComparacao()"></select>
+        </div>
+        <div class="comp-field">
+          <label>Filtrar status</label>
+          <select id="compStatus" onchange="calcularComparacao()">
+            <option value="todos">Todos</option>
+            <option value="Realizado">Somente realizados</option>
+            <option value="Agendado">Somente agendados</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Resultado: cards -->
+      <div class="comp-results">
+        <div class="comp-card comp-card-a">
+          <span class="comp-card-label" id="cardLabelA">Opção A</span>
+          <span class="comp-card-value" id="cardValA">—</span>
+          <span class="comp-card-sub">exames</span>
+        </div>
+        <div class="comp-card comp-card-b">
+          <span class="comp-card-label" id="cardLabelB">Opção B</span>
+          <span class="comp-card-value" id="cardValB">—</span>
+          <span class="comp-card-sub">exames</span>
+        </div>
+        <div class="comp-card comp-card-diff">
+          <span class="comp-card-label">Diferença</span>
+          <span class="comp-card-value" id="cardDiff">—</span>
+          <span class="comp-card-sub" id="cardDiffSub">em quantidade</span>
+        </div>
+        <div class="comp-card comp-card-pct">
+          <span class="comp-card-label">Variação %</span>
+          <span class="comp-card-value" id="cardPct">—</span>
+          <span class="comp-card-sub" id="cardPctSub">A → B</span>
+        </div>
+      </div>
+
+      <!-- Gráfico comparativo + detalhamento -->
+      <div class="comp-chart-row">
+        <div class="comp-chart-box"><canvas id="chartComp"></canvas></div>
+        <div class="comp-detail" id="compDetail"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- TABLE -->
 <section class="table-section">
   <div class="table-card">

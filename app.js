@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   mesclarAgendamentosLocais();
   populateFilters();
   applyFilters();
+  popularComparacao();
   setupListeners();
 
   // Lê dados reais da planilha Google Sheets (se ativado em config)
@@ -76,6 +77,7 @@ async function lerPlanilhaCSV() {
       mesclarAgendamentosLocais();
       populateFilters();
       applyFilters();
+      popularComparacao();
       if (btn) btn.textContent = "✓ Planilha conectada";
       mostrarStatusConexao(true, registros.length);
     } else {
@@ -626,6 +628,122 @@ function sortTable(key) {
 }
 function prevPage() { if (currentPage > 1)  { currentPage--; renderTable(); } }
 function nextPage() { if (currentPage < Math.ceil(tableData.length/PAGE_SIZE)) { currentPage++; renderTable(); } }
+
+// ============================================================
+//  COMPARATIVO PERSONALIZADO (escolha manual + quantidades + %)
+// ============================================================
+function getDimValues(dim) {
+  const arr = dadosOriginais;
+  if (dim === 'ano')   return [...new Set(arr.map(r=>new Date(r.data+'T12:00').getFullYear()))].sort().map(String);
+  if (dim === 'tipo')  return [...new Set(arr.map(r=>r.tipo))].sort();
+  if (dim === 'empresa') return [...new Set(arr.map(r=>r.empresa))].sort();
+  if (dim === 'procedimento') return [...new Set(arr.map(r=>r.descricao))].sort();
+  return [];
+}
+
+function popularComparacao() {
+  const dim    = document.getElementById('compDim').value;
+  const anoBox = document.getElementById('compAnoBox');
+  const selA   = document.getElementById('compA');
+  const selB   = document.getElementById('compB');
+  const labels = { ano:'Ano', mes:'Mês', tipo:'Tipo de Exame', empresa:'Empresa', procedimento:'Procedimento' };
+  document.getElementById('lblA').textContent = labels[dim] + ' A';
+  document.getElementById('lblB').textContent = labels[dim] + ' B';
+
+  anoBox.style.display = (dim === 'mes') ? 'flex' : 'none';
+  if (dim === 'mes') {
+    const selAno = document.getElementById('compAno');
+    const anos = [...new Set(dadosOriginais.map(r=>new Date(r.data+'T12:00').getFullYear()))].sort();
+    selAno.innerHTML = anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+    if (anos.length) selAno.value = anos[anos.length-1];
+  }
+
+  let opts;
+  if (dim === 'mes') opts = MESES_FULL.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  else               opts = getDimValues(dim).map(v=>`<option value="${v}">${v}</option>`).join('');
+  selA.innerHTML = opts; selB.innerHTML = opts;
+
+  const n = selA.options.length;
+  if (n >= 2) { selA.selectedIndex = n-2; selB.selectedIndex = n-1; }
+  calcularComparacao();
+}
+
+function contarPara(dim, valor, ano, status) {
+  return dadosOriginais.filter(r => {
+    if (status !== 'todos' && r.status !== status) return false;
+    const d = new Date(r.data+'T12:00');
+    if (dim === 'ano')   return d.getFullYear().toString() === valor;
+    if (dim === 'mes')   return (d.getMonth()+1).toString() === valor && d.getFullYear().toString() === ano;
+    if (dim === 'tipo')  return r.tipo === valor;
+    if (dim === 'empresa') return r.empresa === valor;
+    if (dim === 'procedimento') return r.descricao === valor;
+    return false;
+  }).length;
+}
+
+function rotuloValor(dim, valor) { return dim === 'mes' ? MESES_FULL[+valor-1] : valor; }
+
+function calcularComparacao() {
+  const dim    = document.getElementById('compDim').value;
+  const status = document.getElementById('compStatus').value;
+  const ano    = dim === 'mes' ? document.getElementById('compAno').value : null;
+  const a = document.getElementById('compA').value;
+  const b = document.getElementById('compB').value;
+  if (!a || !b) return;
+
+  const qa = contarPara(dim, a, ano, status);
+  const qb = contarPara(dim, b, ano, status);
+  const diff = qb - qa;
+  const pct  = qa === 0 ? (qb>0?100:0) : ((qb-qa)/qa*100);
+  const rotA = rotuloValor(dim,a) + (dim==='mes'?'/'+ano:'');
+  const rotB = rotuloValor(dim,b) + (dim==='mes'?'/'+ano:'');
+
+  document.getElementById('cardLabelA').textContent = rotA;
+  document.getElementById('cardLabelB').textContent = rotB;
+  document.getElementById('cardValA').textContent   = qa.toLocaleString('pt-BR');
+  document.getElementById('cardValB').textContent   = qb.toLocaleString('pt-BR');
+
+  const diffEl = document.getElementById('cardDiff');
+  diffEl.textContent = (diff>=0?'+':'') + diff.toLocaleString('pt-BR');
+  diffEl.className = 'comp-card-value ' + (diff>0?'up':diff<0?'down':'');
+  document.getElementById('cardDiffSub').textContent = diff===0 ? 'iguais' : (diff>0 ? `${rotB} tem mais` : `${rotB} tem menos`);
+
+  const pctEl = document.getElementById('cardPct');
+  pctEl.textContent = (pct>=0?'+':'') + pct.toFixed(1) + '%';
+  pctEl.className = 'comp-card-value ' + (pct>0?'up':pct<0?'down':'');
+  document.getElementById('cardPctSub').textContent = `${rotA} → ${rotB}`;
+
+  desenharGraficoComp(rotA, rotB, qa, qb);
+
+  const total  = qa+qb;
+  const shareA = total ? (qa/total*100).toFixed(1) : 0;
+  const shareB = total ? (qb/total*100).toFixed(1) : 0;
+  document.getElementById('compDetail').innerHTML = `
+    <div class="cd-title">Resumo da comparação</div>
+    <div class="cd-row"><span>${rotA}</span><strong>${qa} exame(s) · ${shareA}%</strong></div>
+    <div class="cd-row"><span>${rotB}</span><strong>${qb} exame(s) · ${shareB}%</strong></div>
+    <div class="cd-row"><span>Diferença absoluta</span><strong>${diff>=0?'+':''}${diff}</strong></div>
+    <div class="cd-row"><span>Variação percentual</span><strong style="color:${pct>=0?'#1a9e4b':'#e74c3c'}">${pct>=0?'+':''}${pct.toFixed(1)}%</strong></div>
+    <div class="cd-row"><span>Total somado</span><strong>${total}</strong></div>`;
+}
+
+function desenharGraficoComp(rotA, rotB, qa, qb) {
+  destroyChart('comp');
+  const ctx = document.getElementById('chartComp').getContext('2d');
+  charts['comp'] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:[rotA, rotB], datasets:[{ label:'Exames', data:[qa,qb],
+      backgroundColor:['#16A94ACC','#2980b9CC'], borderColor:['#16A94A','#2980b9'],
+      borderWidth:2, borderRadius:8, borderSkipped:false }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:c=>` ${c.parsed.y} exame(s)`,
+          afterLabel:c=>{ const o=c.dataIndex===0?qb:qa; const base=c.dataIndex===0?qa:qb;
+            if(!o) return ''; const p=((c.parsed.y-o)/o*100); return `${p>=0?'+':''}${p.toFixed(1)}% vs o outro`; } } } },
+      scales:{ x:{grid:{display:false},ticks:{font:{size:12,weight:'700'}}},
+               y:{grid:{color:'#f0f4f1'},beginAtZero:true,ticks:{font:{size:11}}} } }
+  });
+}
 
 // ---- UTIL ----
 function getISOWeek(date) {

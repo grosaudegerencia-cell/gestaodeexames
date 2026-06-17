@@ -49,7 +49,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
   display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
 }
 .logo-block { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
-.logo-img { height: 46px; width: auto; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+.logo-img { height: 50px; width: auto; flex-shrink: 0; background: #fff; border-radius: 11px; padding: 5px 7px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .logo-text { display: flex; flex-direction: column; }
 .logo-main { font-size: 1.2rem; font-weight: 800; letter-spacing: -.3px; color: white; }
 .logo-sub  { font-size: .62rem; font-weight: 400; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .8px; }
@@ -164,6 +164,46 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .chart-badge { font-size: .68rem; font-weight: 600; padding: .18rem .55rem; border-radius: 20px; white-space: nowrap; }
 .badge-green { background: var(--gro-green-ghost); color: var(--gro-green); }
 .badge-blue  { background: #ebf5fb; color: var(--gro-blue); }
+
+/* ===================== COMPARATIVO PERSONALIZADO ===================== */
+.comp-body { padding: 1.1rem 1.25rem 1.4rem; }
+.comp-controls {
+  display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end;
+  padding-bottom: 1.1rem; margin-bottom: 1.1rem; border-bottom: 1px solid var(--border);
+}
+.comp-field { display: flex; flex-direction: column; gap: .25rem; }
+.comp-field label { font-size: .68rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+.comp-field select {
+  height: 38px; padding: 0 .75rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: .85rem; color: var(--text-primary); background: white; cursor: pointer; min-width: 150px; font-family: inherit;
+}
+.comp-field select:focus { outline: none; border-color: var(--gro-green-brand); }
+.comp-vs { font-size: 1.3rem; font-weight: 800; color: var(--gro-green-brand); padding-bottom: .4rem; }
+
+.comp-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: .9rem; margin-bottom: 1.3rem; }
+.comp-card {
+  border-radius: var(--radius); padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: .15rem;
+  border: 1px solid var(--border); position: relative; overflow: hidden;
+}
+.comp-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; }
+.comp-card-a    { background: #f0f9f4; } .comp-card-a::before    { background: var(--gro-green); }
+.comp-card-b    { background: #eef6fd; } .comp-card-b::before    { background: var(--gro-blue); }
+.comp-card-diff { background: #faf6fd; } .comp-card-diff::before { background: var(--gro-purple); }
+.comp-card-pct  { background: #fffaf0; } .comp-card-pct::before  { background: var(--gro-orange); }
+.comp-card-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comp-card-value { font-size: 1.85rem; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+.comp-card-sub   { font-size: .72rem; color: var(--text-muted); }
+.comp-card-value.up   { color: #1a9e4b; }
+.comp-card-value.down { color: #e74c3c; }
+
+.comp-chart-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem; align-items: stretch; }
+.comp-chart-box { height: 260px; position: relative; }
+.comp-detail { font-size: .82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: .5rem; justify-content: center; }
+.comp-detail .cd-row { display: flex; justify-content: space-between; padding: .5rem .75rem; background: var(--bg); border-radius: 8px; }
+.comp-detail .cd-row strong { color: var(--text-primary); }
+.comp-detail .cd-title { font-weight: 700; color: var(--text-primary); font-size: .85rem; margin-bottom: .2rem; }
+@media (max-width: 768px) { .comp-chart-row { grid-template-columns: 1fr; } }
 
 /* ===================== TABLE SECTION ===================== */
 .table-section { max-width: 1440px; margin: 1.1rem auto 1.5rem; padding: 0 1.5rem; }
