@@ -75,6 +75,10 @@
 .btn-mini { padding:.3rem .7rem; border:1.5px solid var(--border); background:#fff; border-radius:6px; font-size:.74rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--text-secondary); }
 .btn-mini:hover { border-color:var(--gro-green-brand); color:var(--gro-green); }
 .btn-mini-add { border-color:var(--gro-green-brand); color:var(--gro-green); }
+/* Registros vindos da planilha (data.js) */
+.ag-hist-row { background:#f0f9ff; border-left:3px solid #3AB86A; }
+.ag-hist-row:hover { background:#e6f4ff; }
+.ag-hist-tag { display:inline-block; font-size:.58rem; font-weight:700; background:#d5f5e3; color:#1a6e3c; padding:.08rem .4rem; border-radius:10px; margin-left:.4rem; vertical-align:middle; letter-spacing:.2px; }
 .btn-mini-add:hover { background:var(--gro-green); color:#fff; }
 
 /* ---------- MODAL ---------- */

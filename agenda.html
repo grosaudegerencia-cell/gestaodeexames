@@ -9,6 +9,7 @@
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="db.js"></script>
+<script src="data.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="sistema.css"/>
 </head>
@@ -145,6 +146,18 @@ function irHoje() {
   renderAgenda();
 }
 
+// Agrupa registros do GRO_EXAMES (data.js) por empresa+paciente para uma data
+function getExamesParaData(data) {
+  if (typeof GRO_EXAMES === 'undefined') return [];
+  const grupos = {};
+  GRO_EXAMES.filter(r => r.data === data).forEach(r => {
+    const key = `${r.empresa}|${r.paciente}`;
+    if (!grupos[key]) grupos[key] = { paciente:r.paciente, empresa:r.empresa, tipo:r.tipo, status:r.status, procs:[] };
+    if (r.descricao && !grupos[key].procs.includes(r.descricao)) grupos[key].procs.push(r.descricao);
+  });
+  return Object.values(grupos);
+}
+
 function renderAgenda() {
   const data = dataAtual();
   const d = new Date(data+'T12:00');
@@ -152,33 +165,63 @@ function renderAgenda() {
   document.getElementById('agendaDow').textContent = dow.charAt(0).toUpperCase()+dow.slice(1);
 
   const slots = GRO_DB.gerarSlots();
-  const ags = GRO_DB.getPorData(data);
-  const mapa = {}; ags.forEach(a => mapa[a.hora] = a);
+
+  // 1 — Registros salvos (localStorage) — precedência máxima
+  const agLocal = GRO_DB.getPorData(data);
+  const mapa = {};
+  agLocal.forEach(a => mapa[a.hora] = a);
+
+  // 2 — Registros históricos da planilha (data.js) para a mesma data
+  const historico = getExamesParaData(data);
+  const localKeys = new Set(agLocal.map(a => `${a.empresa}|${a.paciente}`));
+  const semSlot = historico.filter(h => !localKeys.has(`${h.empresa}|${h.paciente}`));
+
+  // Distribui registros históricos nos slots livres
+  let histIdx = 0;
+  slots.forEach(s => {
+    if (!mapa[s.hora] && !s.almoco && histIdx < semSlot.length) {
+      const h = semSlot[histIdx++];
+      mapa[s.hora] = { ...h, hora:s.hora, data, procedimentos:h.procs, fromHistorico:true, id:null };
+    }
+  });
 
   const grid = document.getElementById('agendaGrid');
   grid.innerHTML = '';
+  let ocupadas = 0;
+
   slots.forEach(s => {
     const a = mapa[s.hora];
     const row = document.createElement('div');
+
     if (s.almoco && !a) {
       row.className = 'ag-row ag-almoco';
       row.innerHTML = `<span class="ag-hora">${s.hora}</span><span class="ag-almoco-txt">— Intervalo / Almoço —</span>`;
       grid.appendChild(row); return;
     }
+
     if (a) {
+      ocupadas++;
       const tc = TIPO_CORES[a.tipo] || '#777';
       const sc = STATUS_CORES[a.status] || '#777';
       const procs = (a.procedimentos||[]).join(', ');
-      row.className = 'ag-row ag-ocupada';
+      const isHist = !!a.fromHistorico;
+      row.className = 'ag-row ag-ocupada' + (isHist ? ' ag-hist-row' : '');
+      const pac = (a.paciente||'').replace(/'/g,"\\'");
+      const emp = (a.empresa||'').replace(/'/g,"\\'");
       row.innerHTML = `
         <span class="ag-hora">${s.hora}</span>
         <span class="ag-pac">
           <strong>${a.paciente||'—'}</strong>
           <small>${a.empresa||''}${procs?' · '+procs:''}</small>
+          ${isHist ? '<span class="ag-hist-tag">📋 Planilha</span>' : ''}
         </span>
         <span class="ag-tipo"><span class="ag-tag" style="background:${tc}">${a.tipo||'—'}</span></span>
         <span class="ag-status"><span class="ag-badge" style="background:${sc}1a;color:${sc}">●&nbsp;${a.status||'—'}</span></span>
-        <span class="ag-acao"><button class="btn-mini" onclick="editarAg('${a.id}')">Editar</button></span>`;
+        <span class="ag-acao">${
+          isHist
+            ? `<button class="btn-mini btn-mini-add" onclick="confirmarDaPlanilha('${s.hora}','${pac}','${emp}','${a.tipo||''}','${a.status||''}')">+ Confirmar</button>`
+            : `<button class="btn-mini" onclick="editarAg('${a.id}')">Editar</button>`
+        }</span>`;
     } else {
       row.className = 'ag-row ag-livre';
       row.innerHTML = `
@@ -190,10 +233,36 @@ function renderAgenda() {
     grid.appendChild(row);
   });
 
-  const st = GRO_DB.statsDia(data);
-  document.getElementById('stLivres').textContent = st.livres;
-  document.getElementById('stOcup').textContent   = st.ocupadas;
-  document.getElementById('stTotal').textContent  = st.total;
+  const totalSlots = slots.filter(s => !s.almoco).length;
+  document.getElementById('stLivres').textContent = Math.max(totalSlots - ocupadas, 0);
+  document.getElementById('stOcup').textContent   = ocupadas;
+  document.getElementById('stTotal').textContent  = totalSlots;
+}
+
+// Abre modal pré-preenchido com dados da planilha para o usuário confirmar/salvar
+function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
+  const data = dataAtual();
+  const hist = getExamesParaData(data).find(h => h.paciente === paciente && h.empresa === empresa);
+  preencherSelectsModal();
+  document.getElementById('modalTitle').textContent = 'Confirmar da Planilha';
+  document.getElementById('mId').value       = '';
+  document.getElementById('mData').value     = new Date(data+'T12:00').toLocaleDateString('pt-BR');
+  document.getElementById('mHora').value     = hora;
+  document.getElementById('mPaciente').value = paciente;
+  document.getElementById('mEmpresa').value  = empresa;
+  document.getElementById('mTipo').value     = tipo;
+  document.getElementById('mStatus').value   = status || 'Agendado';
+  document.getElementById('btnExcluir').style.display = 'none';
+  document.getElementById('modalAg').dataset.hora = hora;
+  if (hist && hist.procs.length) {
+    setTimeout(() => {
+      hist.procs.forEach(p => {
+        const cb = document.querySelector(`#mProcs input[value="${CSS.escape(p)}"]`);
+        if (cb) cb.checked = true;
+      });
+    }, 30);
+  }
+  document.getElementById('modalAg').classList.add('show');
 }
 
 // ---------- MODAL ----------
