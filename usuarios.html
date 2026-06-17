@@ -37,6 +37,11 @@
 .btn-del:hover{background:#fef2f2}
 .btn-key{background:none;border:1.5px solid #d4e6da;color:#2d5a3d;border-radius:6px;padding:.25rem .65rem;cursor:pointer;font-size:.75rem;font-family:inherit;margin-right:.35rem}
 .btn-key:hover{border-color:#2EB45D}
+.btn-edit{background:none;border:1.5px solid #2EB45D;color:#1a6e3c;border-radius:6px;padding:.25rem .65rem;cursor:pointer;font-size:.75rem;font-family:inherit;margin-right:.35rem;font-weight:600}
+.btn-edit:hover{background:#eafaf1}
+.btn-cancel-edit{background:none;border:1.5px solid #d4e6da;color:#7f9e8a;border-radius:8px;padding:0 1.1rem;height:42px;cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:600}
+.btn-cancel-edit:hover{border-color:#b0c4b8;color:#2d5a3d}
+.form-card.editing{box-shadow:0 0 0 2px #2EB45D, 0 2px 12px rgba(0,0,0,.08)}
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:600;color:white;transform:translateY(80px);opacity:0;transition:all .35s;z-index:1000}
 .toast.show{transform:translateY(0);opacity:1}.toast.success{background:#1a6e3c}.toast.error{background:#dc2626}
 .info-box{background:#eafaf1;border-left:4px solid #2EB45D;border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:#2d5a3d;line-height:1.6;margin-bottom:1.25rem}
@@ -49,22 +54,22 @@
 <div class="page-body">
   <h1 style="font-size:1.3rem;font-weight:800;color:#1B392A;margin-bottom:1rem">Gerenciar Usuários <span id="userGreet" style="font-size:.8rem;font-weight:500;color:#7f9e8a"></span></h1>
   <div class="info-box">
-    <strong>Área do Administrador.</strong> Aqui você cria e remove usuários do sistema. Os usuários criados aqui ficam salvos neste navegador.
+    <strong>Área do Administrador.</strong> Aqui você cria, edita e remove usuários do sistema. Use <strong>Editar</strong> para alterar nome, perfil ou senha de qualquer usuário (inclusive os padrão). As alterações ficam salvas neste navegador.
     Para usuários permanentes em qualquer dispositivo, adicione-os também no arquivo <code>config.js</code>.
   </div>
 
-  <!-- NOVO USUÁRIO -->
-  <div class="form-card">
+  <!-- NOVO / EDITAR USUÁRIO -->
+  <div class="form-card" id="formCard">
     <div class="form-header">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-      <span class="form-header-text">Criar Novo Usuário</span>
+      <span class="form-header-text" id="formTitle">Criar Novo Usuário</span>
     </div>
     <div class="form-body">
-      <form id="formUser" onsubmit="criarUsuario(event)">
+      <form id="formUser" onsubmit="salvarUsuario(event)">
         <div class="form-grid">
           <div class="field"><label>Nome completo *</label><input type="text" id="uName" placeholder="Ex: Maria Recepção" required/></div>
           <div class="field"><label>Usuário (login) *</label><input type="text" id="uLogin" placeholder="Ex: maria" required/></div>
-          <div class="field"><label>Senha *</label><input type="text" id="uPass" placeholder="Senha de acesso" required/></div>
+          <div class="field"><label id="lblPass">Senha *</label><input type="text" id="uPass" placeholder="Senha de acesso" required/></div>
           <div class="field"><label>Perfil *</label>
             <select id="uRole">
               <option value="user">Recepção / Operador</option>
@@ -73,7 +78,10 @@
             </select>
           </div>
         </div>
-        <button type="submit" class="btn-primary">+ Criar Usuário</button>
+        <div style="display:flex;gap:.6rem;align-items:center">
+          <button type="submit" class="btn-primary" id="btnSalvarUser">+ Criar Usuário</button>
+          <button type="button" class="btn-cancel-edit" id="btnCancelarEdit" onclick="cancelarEdicao()" style="display:none">Cancelar edição</button>
+        </div>
       </form>
     </div>
   </div>
@@ -104,8 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
   renderUsers();
 });
 
-function criarUsuario(e) {
+let editandoUsername = null;
+
+// Despacha: cria um novo usuário ou salva a edição
+function salvarUsuario(e) {
   e.preventDefault();
+  if (editandoUsername) return salvarEdicao();
+
   const r = GRO_AUTH.criarUsuario({
     name:     document.getElementById('uName').value,
     username: document.getElementById('uLogin').value,
@@ -114,6 +127,51 @@ function criarUsuario(e) {
   });
   if (r.ok) { toast('Usuário criado com sucesso!', 'success'); document.getElementById('formUser').reset(); renderUsers(); }
   else toast(r.msg, 'error');
+}
+
+// Preenche o formulário com os dados do usuário para edição
+function editar(username) {
+  const u = GRO_AUTH.getAllUsers().find(x => x.username === username);
+  if (!u) return;
+  editandoUsername = username;
+  document.getElementById('uName').value  = u.name;
+  document.getElementById('uLogin').value = u.username;
+  document.getElementById('uLogin').disabled = true;
+  document.getElementById('uPass').value = '';
+  document.getElementById('uPass').required = false;
+  document.getElementById('uRole').value = u.role;
+  document.getElementById('formTitle').textContent = `Editar: ${u.name}`;
+  document.getElementById('lblPass').textContent = 'Nova senha (deixe em branco para manter)';
+  document.getElementById('uPass').placeholder = 'Deixe em branco para não alterar';
+  document.getElementById('btnSalvarUser').textContent = '💾 Salvar Alterações';
+  document.getElementById('btnCancelarEdit').style.display = 'inline-flex';
+  document.getElementById('formCard').classList.add('editing');
+  document.getElementById('formCard').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function salvarEdicao() {
+  const r = GRO_AUTH.editarUsuario({
+    username: editandoUsername,
+    name:     document.getElementById('uName').value,
+    password: document.getElementById('uPass').value,
+    role:     document.getElementById('uRole').value,
+  });
+  if (r.ok) { toast('Usuário atualizado com sucesso!', 'success'); cancelarEdicao(); renderUsers(); }
+  else toast(r.msg, 'error');
+}
+
+function cancelarEdicao() {
+  editandoUsername = null;
+  const f = document.getElementById('formUser');
+  f.reset();
+  document.getElementById('uLogin').disabled = false;
+  document.getElementById('uPass').required = true;
+  document.getElementById('formTitle').textContent = 'Criar Novo Usuário';
+  document.getElementById('lblPass').textContent = 'Senha *';
+  document.getElementById('uPass').placeholder = 'Senha de acesso';
+  document.getElementById('btnSalvarUser').textContent = '+ Criar Usuário';
+  document.getElementById('btnCancelarEdit').style.display = 'none';
+  document.getElementById('formCard').classList.remove('editing');
 }
 
 function renderUsers() {
@@ -129,7 +187,7 @@ function renderUsers() {
       <td><span class="role-badge ${rCls}">${rLbl}</span></td>
       <td>${u.fixo ? '<span class="tag-fixo">padrão (config.js)</span>' : 'criado por admin'}</td>
       <td>
-        ${u.fixo ? '' : `<button class="btn-key" onclick="trocarSenha('${u.username}')">Senha</button>`}
+        <button class="btn-edit" onclick="editar('${u.username}')">Editar</button>
         <button class="btn-del" onclick="remover('${u.username}')">Excluir</button>
       </td>`;
     tb.appendChild(tr);
@@ -141,13 +199,6 @@ function remover(username) {
   const r = GRO_AUTH.removerUsuario(username);
   if (r.ok) { toast('Usuário excluído com sucesso.', 'success'); renderUsers(); }
   else toast(r.msg, 'error');
-}
-
-function trocarSenha(username) {
-  const nova = prompt(`Nova senha para "${username}":`);
-  if (!nova) return;
-  const r = GRO_AUTH.alterarSenha(username, nova);
-  toast(r.ok ? 'Senha alterada!' : r.msg, r.ok ? 'success' : 'error');
 }
 
 function toast(msg, tipo) {

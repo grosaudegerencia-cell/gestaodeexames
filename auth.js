@@ -5,20 +5,30 @@
 const GRO_AUTH = {
 
   SESSION_KEY:   'gro_session',
-  USERS_KEY:     'gro_usuarios_extra',     // usuários criados pelo admin
+  USERS_KEY:     'gro_usuarios_extra',       // usuários criados pelo admin
   DISABLED_KEY:  'gro_usuarios_desativados', // usernames de padrão desativados
+  OVERRIDES_KEY: 'gro_usuarios_override',    // edições nos usuários padrão (config.js)
 
   getDisabled() {
     try { return JSON.parse(localStorage.getItem(this.DISABLED_KEY)) || []; } catch { return []; }
   },
   saveDisabled(list) { localStorage.setItem(this.DISABLED_KEY, JSON.stringify(list)); },
 
+  getOverrides() {
+    try { return JSON.parse(localStorage.getItem(this.OVERRIDES_KEY)) || {}; } catch { return {}; }
+  },
+  saveOverrides(obj) { localStorage.setItem(this.OVERRIDES_KEY, JSON.stringify(obj)); },
+
   // ---- Lista combinada: usuários do config + criados pelo admin (sem desativados) ----
+  // Aplica as edições (overrides) feitas sobre os usuários padrão.
   getAllUsers() {
     let extra = [];
     try { extra = JSON.parse(localStorage.getItem(this.USERS_KEY)) || []; } catch {}
     const desativados = this.getDisabled();
-    return [...GRO_CONFIG.USERS, ...extra].filter(u => !desativados.includes(u.username));
+    const overrides = this.getOverrides();
+    return [...GRO_CONFIG.USERS, ...extra]
+      .filter(u => !desativados.includes(u.username))
+      .map(u => overrides[u.username] ? { ...u, ...overrides[u.username] } : u);
   },
 
   getExtraUsers() {
@@ -115,10 +125,62 @@ const GRO_AUTH = {
     return { ok:true };
   },
 
+  // Edita nome, perfil e (opcionalmente) senha de qualquer usuário.
+  // O username (login) não é alterável — é a identidade do usuário.
+  editarUsuario({ username, name, role, password }) {
+    username = (username||'').trim().toLowerCase();
+    name = (name||'').trim();
+    if (!name) return { ok:false, msg:'Informe o nome do usuário.' };
+
+    const alvo = this.getAllUsers().find(u => u.username === username);
+    if (!alvo) return { ok:false, msg:'Usuário não encontrado.' };
+
+    // Proteção: não rebaixar o último administrador ativo
+    if (alvo.role === 'admin' && role && role !== 'admin') {
+      const admins = this.getAllUsers().filter(u => u.role === 'admin');
+      if (admins.length <= 1)
+        return { ok:false, msg:'Não é possível alterar o perfil do único administrador.' };
+    }
+
+    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
+    if (fixo) {
+      const ov = this.getOverrides();
+      const novo = { ...(ov[username] || {}), name, role: role || alvo.role };
+      if (password) novo.passwordB64 = btoa(password);
+      ov[username] = novo;
+      this.saveOverrides(ov);
+    } else {
+      const extra = this.getExtraUsers();
+      const i = extra.findIndex(u => u.username === username);
+      if (i < 0) return { ok:false, msg:'Usuário não encontrado.' };
+      extra[i].name = name;
+      extra[i].role = role || extra[i].role;
+      if (password) extra[i].passwordB64 = btoa(password);
+      this.saveExtraUsers(extra);
+    }
+
+    // Se o usuário em edição é o que está logado, atualiza a sessão
+    const atual = this.getUser();
+    if (atual && atual.username === username) {
+      atual.name = name;
+      atual.role = role || atual.role;
+      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(atual));
+    }
+    return { ok:true };
+  },
+
   alterarSenha(username, novaSenha) {
+    if (!novaSenha) return { ok:false, msg:'Informe a nova senha.' };
+    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
+    if (fixo) {
+      const ov = this.getOverrides();
+      ov[username] = { ...(ov[username] || {}), passwordB64: btoa(novaSenha) };
+      this.saveOverrides(ov);
+      return { ok:true };
+    }
     const extra = this.getExtraUsers();
     const i = extra.findIndex(u => u.username === username);
     if (i >= 0) { extra[i].passwordB64 = btoa(novaSenha); this.saveExtraUsers(extra); return { ok:true }; }
-    return { ok:false, msg:'Usuário padrão: altere a senha no arquivo config.js.' };
+    return { ok:false, msg:'Usuário não encontrado.' };
   }
 };
