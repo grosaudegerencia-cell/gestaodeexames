@@ -5,21 +5,23 @@
 const GRO_CONFIG = {
 
   // ============================================================
-  //  GOOGLE SHEETS — Planilha PRÓPRIA do Sistema
+  //  GOOGLE SHEETS — Planilha de Base de Exames (Dashboard)
   // ============================================================
-  //  Planilha dedicada do sistema (criada no Drive da GRO Saúde):
-  //  "Sistema GRO Saúde — Agendamentos"
-  //  https://docs.google.com/spreadsheets/d/14O4xjAW5NtxaP8boO2Ng0ubBIdG-A6YuCoKO3dvbiLM/edit
+  //  Planilha principal de histórico de exames (Google Drive GRO Saúde):
+  //  "GRO Saúde — Base de Exames e Agendamentos"
+  //  https://docs.google.com/spreadsheets/d/1mK15eeIsEmLEhoRB4ZqbcUhEK66OipKGFZqFOCVGRZk/edit
   //
-  //  Esta planilha:
-  //   • recebe TODOS os agendamentos feitos na Agenda do site
-  //   • envia automaticamente o RELATÓRIO DIÁRIO por e-mail (toda tarde)
-  //  O motor disso é o Apps Script (arquivo apps-script.gs).
+  //  Colunas: Data | Tipo | Procedimento | Empresa | Paciente | Status
+  //
+  //  Para sincronização ao vivo:
+  //   1. Abra a planilha e vá em Arquivo → Compartilhar → "Qualquer pessoa com o link"
+  //   2. Publique: Arquivo → Publicar na web → CSV
+  //   3. Mude USAR_SHEETS para true abaixo
   // ============================================================
-  SHEET_ID:          '14O4xjAW5NtxaP8boO2Ng0ubBIdG-A6YuCoKO3dvbiLM',
-  SHEET_ABA:         'Agendamentos',
+  SHEET_ID:          '1mK15eeIsEmLEhoRB4ZqbcUhEK66OipKGFZqFOCVGRZk',
+  SHEET_ABA:         'Planilha1',
   SHEET_ABA_AGENDA:  'Agendamentos',
-  USAR_SHEETS:       false,   // dashboard analítico continua usando data.js (histórico)
+  USAR_SHEETS:       false,   // mude para true após publicar a planilha no Google Sheets
 
   // E-mail que recebe o relatório diário (configurado no apps-script.gs)
   EMAIL_RELATORIO:   'e-protecao@hotmail.com',

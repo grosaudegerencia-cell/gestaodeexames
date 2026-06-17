@@ -1,11 +1,21 @@
 // ============================================================
 //  DADOS REAIS - Agendas Clinica GRO Saude
-//  Planilha 1: AGENDA PADRAO (Fev-Jun/2025)
-//  Planilha 2: AGENDA CLINICA (Jun/2026)
+//  Base histórica: 2024 (Google Drive — "GRO Saúde — Base de Exames e Agendamentos")
+//  Planilha 1: AGENDA PADRAO (Fev/2025 – Jun/2025)
+//  Planilha 2: AGENDA CLINICA (Fev/2026 – Jun/2026)
+//  Total: ~2270 registros | Jan/2024 – Jun/2026
 //  Cada linha = um procedimento/exame. Importado das planilhas reais.
 // ============================================================
 
 const GRO_EXAMES = [
+  // ---- 2024 — dados importados da planilha "GRO Saúde — Base de Exames e Agendamentos" ----
+  { data:"2024-02-12", tipo:"Coleta Laboratorial", descricao:"Hemograma Completo", empresa:"ABS Infraestrutura", paciente:"Iara Teles", status:"Realizado" },
+  { data:"2024-05-21", tipo:"ASO Admissional", descricao:"Audiometria", empresa:"Haras Meirelles", paciente:"João Bastos", status:"Realizado" },
+  { data:"2024-08-06", tipo:"ASO Periódico", descricao:"Audiometria", empresa:"Mega Impress", paciente:"Carla Dias", status:"Realizado" },
+  { data:"2024-11-14", tipo:"ASO Admissional", descricao:"Espirometria", empresa:"GHR Transformadores", paciente:"Gabriela Luz", status:"Realizado" },
+  { data:"2024-12-05", tipo:"Consulta Médica", descricao:"Consulta Clínica Geral", empresa:"Souza Arantes", paciente:"Diego Faria", status:"Realizado" },
+  // ---- Jan/2025 — dados importados da planilha "GRO Saúde — Base de Exames e Agendamentos" ----
+  { data:"2025-01-07", tipo:"ASO Periódico", descricao:"Raio-X de Tórax", empresa:"Fundição Garra", paciente:"Maria Oliveira", status:"Realizado" },
   { data:"2025-02-11", tipo:"ASO Admissional", descricao:"Exame Clínico", empresa:"Mb Junior", paciente:"Marcelo Silva", status:"Realizado" },
   { data:"2025-02-11", tipo:"ASO Admissional", descricao:"Audiometria", empresa:"Mb Junior", paciente:"Marcelo Silva", status:"Realizado" },
   { data:"2025-02-11", tipo:"ASO Admissional", descricao:"Eletrocardiograma", empresa:"Mb Junior", paciente:"Marcelo Silva", status:"Realizado" },
@@ -2258,4 +2268,7 @@ const GRO_EXAMES = [
   { data:"2026-06-19", tipo:"ASO Demissional", descricao:"Exame Clínico", empresa:"Trama Azul", paciente:"Bruna Sebastiana Guidetti", status:"Realizado" },
   { data:"2026-06-22", tipo:"ASO Demissional", descricao:"Exame Clínico", empresa:"Trama Azul", paciente:"Helena Marcia Tiburcio Salgado", status:"Realizado" },
   { data:"2026-06-23", tipo:"ASO Demissional", descricao:"Exame Clínico", empresa:"Conceito", paciente:"Luis Fernando", status:"Realizado" },
+  // ---- Jun 24-25/2026 — dados importados da planilha "GRO Saúde — Base de Exames e Agendamentos" ----
+  { data:"2026-06-24", tipo:"ASO Periódico", descricao:"Raio-X de Tórax", empresa:"Mega Impress", paciente:"Gabriela Luz", status:"Agendado" },
+  { data:"2026-06-25", tipo:"Coleta Laboratorial", descricao:"Colesterol Total", empresa:"WJ Decor", paciente:"Kátia Vaz", status:"Realizado" },
 ];
