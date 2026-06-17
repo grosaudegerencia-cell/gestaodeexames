@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Login — GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#0d3320 0%,#1a6e3c 50%,#0d3320 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{background:white;border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:400px;box-shadow:0 25px 60px rgba(0,0,0,.35)}
+.logo-area{text-align:center;margin-bottom:2rem}
+.logo-svg{width:80px;height:90px;margin:0 auto 1rem}
+.brand-name{font-size:1.8rem;font-weight:800;color:#1B392A;line-height:1}
+.brand-sub{font-size:.68rem;font-weight:600;color:#3AB86A;text-transform:uppercase;letter-spacing:1px;margin-top:.3rem}
+.login-title{font-size:1.05rem;font-weight:700;color:#1B392A;text-align:center;margin-bottom:.3rem}
+.login-desc{font-size:.8rem;color:#7a9a82;text-align:center;margin-bottom:1.75rem}
+.field{margin-bottom:1.1rem}
+.field label{display:block;font-size:.78rem;font-weight:600;color:#2d5a3d;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+.field input{width:100%;height:46px;border:2px solid #d4e6da;border-radius:10px;padding:0 1rem;font-size:.9rem;font-family:inherit;color:#1B392A;transition:border-color .2s}
+.field input:focus{outline:none;border-color:#3AB86A}
+.error-msg{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;padding:.6rem .9rem;font-size:.8rem;margin-bottom:1rem;display:none}
+.btn-login{width:100%;height:48px;background:linear-gradient(135deg,#1a6e3c,#2ecc71);border:none;border-radius:10px;color:white;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;letter-spacing:.3px}
+.btn-login:hover{opacity:.9}
+.btn-login:active{transform:scale(.98)}
+.hint{margin-top:1.5rem;padding:1rem;background:#eafaf1;border-radius:8px;font-size:.75rem;color:#2d5a3d;line-height:1.5}
+.hint strong{color:#1B392A}
+.footer-login{text-align:center;margin-top:1.5rem;font-size:.72rem;color:#b0c4b8}
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="logo-area">
+    <!-- Logo GRO Saúde — S em hexágono -->
+    <svg class="logo-svg" viewBox="0 0 100 114" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 3L93 27V87L50 111L7 87V27L50 3Z" fill="#3AB86A"/>
+      <path d="M44 14H82C88.627 14 94 19.373 94 26V26C94 32.627 88.627 38 82 38H44C37.373 38 32 43.373 32 50V50" stroke="white" stroke-width="15" stroke-linecap="round"/>
+      <path d="M56 76H18C11.373 76 6 70.627 6 64V64C6 57.373 11.373 52 18 52H56C62.627 52 68 46.627 68 40V40" stroke="white" stroke-width="15" stroke-linecap="round"/>
+    </svg>
+    <div class="brand-name">GRO Saúde</div>
+    <div class="brand-sub">Gestão de Segurança e Medicina Ocupacional</div>
+  </div>
+
+  <h2 class="login-title">Acesso ao Sistema</h2>
+  <p class="login-desc">Entre com suas credenciais para acessar o dashboard</p>
+
+  <div class="error-msg" id="errorMsg">Usuário ou senha incorretos.</div>
+
+  <form id="loginForm" onsubmit="doLogin(event)">
+    <div class="field">
+      <label for="username">Usuário</label>
+      <input type="text" id="username" placeholder="Digite seu usuário" autocomplete="username" required/>
+    </div>
+    <div class="field">
+      <label for="password">Senha</label>
+      <input type="password" id="password" placeholder="Digite sua senha" autocomplete="current-password" required/>
+    </div>
+    <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
+  </form>
+
+  <div class="hint">
+    <strong>Credenciais padrão:</strong><br>
+    Admin: <code>admin</code> / <code>gro@2026</code><br>
+    Recepção: <code>recepcao</code> / <code>recep@2026</code><br>
+    <em>Configure novas senhas em <code>config.js</code></em>
+  </div>
+
+  <p class="footer-login">© 2026 GRO Saúde — Sistema interno de gestão</p>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (GRO_AUTH.isLoggedIn()) window.location.href = 'index.html';
+});
+
+function doLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnLogin');
+  const err = document.getElementById('errorMsg');
+  btn.textContent = 'Verificando...';
+  btn.disabled = true;
+  err.style.display = 'none';
+  setTimeout(() => {
+    const ok = GRO_AUTH.login(
+      document.getElementById('username').value.trim(),
+      document.getElementById('password').value
+    );
+    if (ok) {
+      window.location.href = 'index.html';
+    } else {
+      err.style.display = 'block';
+      btn.textContent = 'Entrar';
+      btn.disabled = false;
+    }
+  }, 400);
+}
+</script>
+</body>
+</html>

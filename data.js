@@ -1,10 +1,49 @@
 // ============================================================
-//  DADOS DE EXAMES — Clínica GRO Saúde
-//  Atualize este arquivo com os dados reais das agendas.
-//  Formato: array de objetos com as colunas abaixo.
+//  DADOS DE EXAMES — GRO Saúde (dados de exemplo / fallback)
+//  Quando o Google Sheets estiver configurado em config.js,
+//  os dados reais da planilha substituirão estes automaticamente.
+//  Formato: { data, tipo, descricao, empresa, paciente, status }
 // ============================================================
 
+// --- Dados de 2024 gerados para comparação anual ---
+const DADOS_2024 = (function() {
+  const tipos = ['ASO Admissional','ASO Periódico','ASO Demissional','ASO Retorno','Consulta Médica','Coleta Laboratorial'];
+  const procs = {
+    'ASO Admissional':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo'],
+    'ASO Periódico':      ['Audiometria','Hemograma Completo','Colesterol Total','Raio-X de Tórax'],
+    'ASO Demissional':    ['Audiometria','Acuidade Visual','Hemograma Completo'],
+    'ASO Retorno':        ['Audiometria','Acuidade Visual'],
+    'Consulta Médica':    ['Consulta Clínica Geral'],
+    'Coleta Laboratorial':['Hemograma Completo','Glicemia em Jejum','Colesterol Total','Triglicerídeos'],
+  };
+  const empresas = ['ABS Infraestrutura','Brasilquímica','CLOMA Funilaria','Don Pepper','Fundição Garra',
+    'GM Empreendimentos','Haras Meirelles','Mega Impress','Multi-Grama Paisagismo','Souza Arantes',
+    'TC Consult','Trama','WJ Decor','Fundição Conceito','GHR Transformadores'];
+  const nomes = ['Ana S.','Bruno M.','Carla D.','Diego F.','Elena P.','Fábio R.','Gabi L.',
+    'Hugo C.','Iara T.','João B.','Kátia V.','Luan N.','Maria O.','Neto A.','Olga W.'];
+  // Distribuição mensal 2024: crescimento gradual (clínica em expansão)
+  const qtdMes = [12,14,15,16,18,17,19,20,21,22,23,18]; // total ~215
+  const registros = [];
+  let nIdx = 0;
+  qtdMes.forEach((qtd, mesIdx) => {
+    for (let i = 0; i < qtd; i++) {
+      const dia  = Math.floor(Math.random() * 22) + 1;
+      const tipo = tipos[Math.floor(Math.random() * tipos.length)];
+      const proc = procs[tipo];
+      const desc = proc[Math.floor(Math.random() * proc.length)];
+      const emp  = empresas[Math.floor(Math.random() * empresas.length)];
+      const pac  = nomes[nIdx % nomes.length]; nIdx++;
+      registros.push({
+        data:     `2024-${String(mesIdx+1).padStart(2,'0')}-${String(Math.min(dia,28)).padStart(2,'0')}`,
+        tipo, descricao: desc, empresa: emp, paciente: pac, status: 'Realizado'
+      });
+    }
+  });
+  return registros;
+})();
+
 const GRO_EXAMES = [
+  ...DADOS_2024,
   // Estrutura de cada registro:
   // { data: "AAAA-MM-DD", tipo: "ASO Admissional", descricao: "Audiometria", empresa: "Empresa XYZ", paciente: "João Silva", status: "Realizado" }
 

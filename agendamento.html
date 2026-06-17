@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agendamentos — GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="stylesheet" href="style.css"/>
+<style>
+.page-body{max-width:1100px;margin:0 auto;padding:1.5rem}
+.page-title{font-size:1.4rem;font-weight:800;color:#1B392A;margin-bottom:.25rem}
+.page-sub{font-size:.82rem;color:#7a9a82;margin-bottom:1.5rem}
+.form-card{background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid #d4e6da;overflow:hidden;margin-bottom:1.5rem}
+.form-header{background:linear-gradient(135deg,#1a6e3c,#2ecc71);color:white;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.75rem}
+.form-header svg{width:22px;height:22px;flex-shrink:0}
+.form-header-text{font-size:1rem;font-weight:700}
+.form-body{padding:1.5rem}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.form-grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:.72rem;font-weight:700;color:#2d5a3d;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select,.field textarea{border:1.5px solid #d4e6da;border-radius:8px;padding:.55rem .85rem;font-size:.85rem;font-family:inherit;color:#1B392A;transition:border-color .2s;background:white}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#3AB86A}
+.field textarea{resize:vertical;min-height:70px}
+.field-full{grid-column:1/-1}
+.btn-row{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.25rem}
+.btn-primary{height:42px;padding:0 1.5rem;background:linear-gradient(135deg,#1a6e3c,#2ecc71);border:none;border-radius:8px;color:white;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s}
+.btn-primary:hover{opacity:.88}
+.btn-secondary{height:42px;padding:0 1.25rem;background:white;border:1.5px solid #d4e6da;border-radius:8px;color:#2d5a3d;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-secondary:hover{border-color:#3AB86A;color:#1a6e3c}
+.btn-danger{height:42px;padding:0 1.25rem;background:white;border:1.5px solid #fca5a5;border-radius:8px;color:#dc2626;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:600;color:white;transform:translateY(80px);opacity:0;transition:all .35s;z-index:1000;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#1a6e3c}
+.toast.error{background:#dc2626}
+.sync-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .75rem;border-radius:20px;font-size:.72rem;font-weight:600}
+.sync-ok{background:#eafaf1;color:#1a6e3c}
+.sync-off{background:#fef9e7;color:#d97706}
+.section-divider{border:none;border-top:1px solid #d4e6da;margin:1.25rem 0}
+/* Tabela de agendamentos */
+.agenda-table-wrap{overflow-x:auto}
+#agendaTable{width:100%;border-collapse:collapse;font-size:.82rem}
+#agendaTable thead th{background:#1a6e3c;color:white;padding:.6rem 1rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+#agendaTable tbody tr{border-bottom:1px solid #d4e6da;transition:background .1s}
+#agendaTable tbody tr:hover{background:#eafaf1}
+#agendaTable tbody td{padding:.55rem 1rem;color:#1B392A}
+.status-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.18rem .55rem;border-radius:20px;font-size:.68rem;font-weight:600}
+.s-agendado{background:#eafaf1;color:#1a6e3c}
+.s-confirmado{background:#dbeafe;color:#1d4ed8}
+.s-realizado{background:#f0fdf4;color:#15803d}
+.s-cancelado{background:#fef2f2;color:#dc2626}
+.btn-icon{background:none;border:none;cursor:pointer;padding:.25rem;border-radius:5px;color:#7a9a82;transition:color .2s}
+.btn-icon:hover{color:#1a6e3c}
+.empty-state{text-align:center;padding:3rem 1rem;color:#7a9a82}
+.empty-state svg{width:48px;height:48px;margin:0 auto 1rem;display:block;opacity:.4}
+.filter-row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1rem}
+.filter-row select,.filter-row input{height:35px;padding:0 .75rem;border:1.5px solid #d4e6da;border-radius:8px;font-size:.82rem;font-family:inherit;color:#1B392A;background:white}
+.filter-row select:focus,.filter-row input:focus{outline:none;border-color:#3AB86A}
+.counter-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.counter-chip{padding:.3rem .85rem;border-radius:20px;font-size:.75rem;font-weight:600}
+.chip-total{background:#eafaf1;color:#1a6e3c}
+.chip-hj{background:#dbeafe;color:#1d4ed8}
+.chip-semana{background:#fef9e7;color:#d97706}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-icon">
+        <svg viewBox="0 0 100 114" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+          <path d="M50 3L93 27V87L50 111L7 87V27L50 3Z" fill="white" fill-opacity=".2"/>
+          <path d="M44 14H82C88.627 14 94 19.373 94 26C94 32.627 88.627 38 82 38H44C37.373 38 32 43.373 32 50" stroke="white" stroke-width="15" stroke-linecap="round"/>
+          <path d="M56 76H18C11.373 76 6 70.627 6 64C6 57.373 11.373 52 18 52H56C62.627 52 68 46.627 68 40" stroke="white" stroke-width="15" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-main">GRO Saúde</span>
+        <span class="logo-sub">Gestão de Segurança e Medicina Ocupacional</span>
+      </div>
+    </div>
+    <div class="header-title">
+      <h1>Agendamentos</h1>
+      <p id="userGreet">Carregando...</p>
+    </div>
+    <div class="header-actions" style="display:flex;gap:.75rem;align-items:center">
+      <a href="index.html" style="color:white;text-decoration:none;font-size:.82rem;opacity:.85;font-weight:500">← Dashboard</a>
+      <button onclick="GRO_AUTH.logout()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:.35rem .85rem;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="page-body">
+
+  <!-- FORMULÁRIO DE AGENDAMENTO -->
+  <div class="form-card">
+    <div class="form-header">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="form-header-text">Novo Agendamento</span>
+      <span id="syncBadge" class="sync-badge sync-off" style="margin-left:auto">Google Sheets não configurado</span>
+    </div>
+    <div class="form-body">
+      <form id="formAgenda" onsubmit="salvarAgendamento(event)">
+        <div class="form-grid">
+          <div class="field">
+            <label>Data do Exame *</label>
+            <input type="date" id="fData" required/>
+          </div>
+          <div class="field">
+            <label>Horário *</label>
+            <input type="time" id="fHora" required value="08:00"/>
+          </div>
+          <div class="field">
+            <label>Status</label>
+            <select id="fStatus">
+              <option value="Agendado">Agendado</option>
+              <option value="Confirmado">Confirmado</option>
+              <option value="Realizado">Realizado</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+        </div>
+
+        <hr class="section-divider"/>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Paciente / Colaborador *</label>
+            <input type="text" id="fPaciente" placeholder="Nome completo" required/>
+          </div>
+          <div class="field">
+            <label>CPF</label>
+            <input type="text" id="fCpf" placeholder="000.000.000-00" maxlength="14"/>
+          </div>
+          <div class="field">
+            <label>Empresa *</label>
+            <input type="text" id="fEmpresa" list="empresasList" placeholder="Nome da empresa" required/>
+            <datalist id="empresasList"></datalist>
+          </div>
+        </div>
+
+        <hr class="section-divider"/>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Tipo de Exame *</label>
+            <select id="fTipo" required onchange="atualizarDescricoes()">
+              <option value="">Selecione...</option>
+              <option value="ASO Admissional">ASO Admissional</option>
+              <option value="ASO Periódico">ASO Periódico</option>
+              <option value="ASO Demissional">ASO Demissional</option>
+              <option value="ASO Retorno">ASO Retorno ao Trabalho</option>
+              <option value="ASO Mudança de Função">ASO Mudança de Função</option>
+              <option value="Consulta Médica">Consulta Médica</option>
+              <option value="Coleta Laboratorial">Coleta Laboratorial</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Procedimentos / Exames *</label>
+            <select id="fDescricao" required>
+              <option value="">Selecione o tipo primeiro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Médico Responsável</label>
+            <input type="text" id="fMedico" placeholder="Nome do médico"/>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-top:.75rem">
+          <div class="field field-full">
+            <label>Observações</label>
+            <textarea id="fObs" placeholder="Informações adicionais, restrições, retorno etc."></textarea>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn-primary" id="btnSalvar">
+            Salvar Agendamento
+          </button>
+          <button type="button" class="btn-secondary" onclick="limparForm()">Limpar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LISTA DE AGENDAMENTOS -->
+  <div class="form-card">
+    <div class="form-header">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span class="form-header-text">Agendamentos Registrados</span>
+      <button onclick="carregarAgendamentos()" title="Atualizar da planilha" style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:white;padding:.25rem .7rem;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit">⟳ Atualizar</button>
+    </div>
+    <div class="form-body">
+      <div class="counter-row">
+        <span class="counter-chip chip-total" id="cTotal">Total: —</span>
+        <span class="counter-chip chip-hj" id="cHoje">Hoje: —</span>
+        <span class="counter-chip chip-semana" id="cSemana">Esta semana: —</span>
+      </div>
+      <div class="filter-row">
+        <div>
+          <label style="display:block;font-size:.68rem;font-weight:700;color:#2d5a3d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.2rem">Filtrar por data</label>
+          <input type="date" id="filtroData"/>
+        </div>
+        <div>
+          <label style="display:block;font-size:.68rem;font-weight:700;color:#2d5a3d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.2rem">Status</label>
+          <select id="filtroStatus">
+            <option value="">Todos</option>
+            <option value="Agendado">Agendado</option>
+            <option value="Confirmado">Confirmado</option>
+            <option value="Realizado">Realizado</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:.68rem;font-weight:700;color:#2d5a3d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.2rem">Empresa</label>
+          <input type="text" id="filtroEmpresa" placeholder="Filtrar empresa..." style="min-width:160px"/>
+        </div>
+        <button onclick="aplicarFiltros()" class="btn-secondary" style="height:35px;align-self:flex-end">Filtrar</button>
+        <button onclick="limparFiltros()" class="btn-secondary" style="height:35px;align-self:flex-end">Limpar</button>
+      </div>
+      <div class="agenda-table-wrap">
+        <table id="agendaTable">
+          <thead>
+            <tr>
+              <th>Data / Hora</th>
+              <th>Paciente</th>
+              <th>Empresa</th>
+              <th>Tipo</th>
+              <th>Procedimento</th>
+              <th>Médico</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="agendaBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <svg fill="none" stroke="#3AB86A" stroke-width="1.5" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <p style="font-weight:600">Nenhum agendamento encontrado</p>
+        <p style="font-size:.78rem;margin-top:.25rem">Use o formulário acima para registrar um novo agendamento.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-body -->
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ---- MAPEAMENTO TIPO → PROCEDIMENTOS ----
+const PROC_MAP = {
+  'ASO Admissional':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
+  'ASO Periódico':      ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
+  'ASO Demissional':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum'],
+  'ASO Retorno':        ['Audiometria','Acuidade Visual','Avaliação Clínica'],
+  'ASO Mudança de Função':['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo'],
+  'Consulta Médica':    ['Consulta Clínica Geral','Consulta de Retorno','Avaliação Médica'],
+  'Coleta Laboratorial':['Hemograma Completo','Glicemia em Jejum','Colesterol Total','Triglicerídeos','Ureia e Creatinina','TGO e TGP','HBsAg (Hepatite B)','Anti-HCV','VDRL','TSH'],
+};
+
+const TIPO_CORES = {'ASO Admissional':'#1a6e3c','ASO Periódico':'#27ae60','ASO Demissional':'#e74c3c','ASO Retorno':'#e67e22','ASO Mudança de Função':'#9b59b6','Consulta Médica':'#2980b9','Coleta Laboratorial':'#16a085'};
+
+let todosAgendamentos = [];
+
+// ---- INIT ----
+document.addEventListener('DOMContentLoaded', () => {
+  const user = GRO_AUTH.requireLogin();
+  if (!user) return;
+  document.getElementById('userGreet').textContent = `Usuário: ${user.name}`;
+
+  // Data padrão = hoje
+  document.getElementById('fData').value = new Date().toISOString().split('T')[0];
+
+  // Popula datalist de empresas
+  const dl = document.getElementById('empresasList');
+  const empresas = [...new Set(GRO_EXAMES.map(r => r.empresa))].sort();
+  empresas.forEach(e => { const o = document.createElement('option'); o.value = e; dl.appendChild(o); });
+
+  verificarSheetsConfig();
+  carregarAgendamentos();
+});
+
+function verificarSheetsConfig() {
+  const badge = document.getElementById('syncBadge');
+  if (GRO_CONFIG.SHEETS_URL) {
+    badge.className = 'sync-badge sync-ok';
+    badge.textContent = '⟳ Google Sheets conectado';
+  }
+}
+
+function atualizarDescricoes() {
+  const tipo = document.getElementById('fTipo').value;
+  const sel  = document.getElementById('fDescricao');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  (PROC_MAP[tipo] || []).forEach(p => {
+    const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o);
+  });
+}
+
+// ---- SALVAR ----
+async function salvarAgendamento(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnSalvar');
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+
+  const registro = {
+    id:       Date.now().toString(),
+    data:     document.getElementById('fData').value,
+    hora:     document.getElementById('fHora').value,
+    paciente: document.getElementById('fPaciente').value.trim(),
+    cpf:      document.getElementById('fCpf').value.trim(),
+    empresa:  document.getElementById('fEmpresa').value.trim(),
+    tipo:     document.getElementById('fTipo').value,
+    descricao:document.getElementById('fDescricao').value,
+    medico:   document.getElementById('fMedico').value.trim(),
+    obs:      document.getElementById('fObs').value.trim(),
+    status:   document.getElementById('fStatus').value,
+    criadoEm: new Date().toISOString(),
+  };
+
+  // Salva local
+  salvarLocal(registro);
+
+  // Tenta salvar no Sheets
+  if (GRO_CONFIG.SHEETS_URL) {
+    try {
+      await fetch(GRO_CONFIG.SHEETS_URL, {
+        method: 'POST',
+        mode:   'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'insert', data: registro })
+      });
+      mostrarToast('Salvo localmente e enviado ao Google Sheets!', 'success');
+    } catch {
+      mostrarToast('Salvo localmente. Sheets indisponível no momento.', 'success');
+    }
+  } else {
+    mostrarToast('Agendamento salvo localmente!', 'success');
+  }
+
+  limparForm();
+  carregarAgendamentos();
+  btn.textContent = 'Salvar Agendamento'; btn.disabled = false;
+}
+
+// ---- STORAGE LOCAL ----
+function salvarLocal(r) {
+  const lista = getLocal();
+  lista.unshift(r);
+  localStorage.setItem('gro_agendamentos', JSON.stringify(lista));
+}
+
+function getLocal() {
+  try { return JSON.parse(localStorage.getItem('gro_agendamentos')) || []; } catch { return []; }
+}
+
+// ---- CARREGAR ----
+async function carregarAgendamentos() {
+  let lista = getLocal();
+
+  if (GRO_CONFIG.SHEETS_URL) {
+    try {
+      const r = await fetch(GRO_CONFIG.SHEETS_URL + '?action=list');
+      const d = await r.json();
+      if (d && Array.isArray(d.data)) {
+        // Mescla: Sheets tem prioridade para IDs que existem lá
+        const sheetsIds = new Set(d.data.map(x => x.id));
+        const localOnly = lista.filter(x => !sheetsIds.has(x.id));
+        lista = [...d.data, ...localOnly];
+        localStorage.setItem('gro_agendamentos', JSON.stringify(lista));
+      }
+    } catch { /* Usa local */ }
+  }
+
+  todosAgendamentos = lista.sort((a,b) => (a.data+a.hora) < (b.data+b.hora) ? 1 : -1);
+  atualizarContadores();
+  renderizarTabela(todosAgendamentos);
+}
+
+// ---- FILTROS ----
+function aplicarFiltros() {
+  const data    = document.getElementById('filtroData').value;
+  const status  = document.getElementById('filtroStatus').value;
+  const empresa = document.getElementById('filtroEmpresa').value.toLowerCase();
+  let lista = todosAgendamentos;
+  if (data)    lista = lista.filter(r => r.data === data);
+  if (status)  lista = lista.filter(r => r.status === status);
+  if (empresa) lista = lista.filter(r => r.empresa.toLowerCase().includes(empresa));
+  renderizarTabela(lista);
+}
+
+function limparFiltros() {
+  document.getElementById('filtroData').value = '';
+  document.getElementById('filtroStatus').value = '';
+  document.getElementById('filtroEmpresa').value = '';
+  renderizarTabela(todosAgendamentos);
+}
+
+// ---- CONTADORES ----
+function atualizarContadores() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const semIni = getSemanaIni();
+  document.getElementById('cTotal').textContent  = `Total: ${todosAgendamentos.length}`;
+  document.getElementById('cHoje').textContent   = `Hoje: ${todosAgendamentos.filter(r=>r.data===hoje).length}`;
+  document.getElementById('cSemana').textContent = `Esta semana: ${todosAgendamentos.filter(r=>r.data>=semIni&&r.data<=hoje).length}`;
+}
+
+function getSemanaIni() {
+  const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+// ---- RENDERIZAR TABELA ----
+function renderizarTabela(lista) {
+  const tbody = document.getElementById('agendaBody');
+  const empty = document.getElementById('emptyState');
+  const table = document.getElementById('agendaTable');
+  tbody.innerHTML = '';
+  if (!lista.length) {
+    table.style.display = 'none'; empty.style.display = 'block'; return;
+  }
+  table.style.display = 'table'; empty.style.display = 'none';
+  lista.forEach(r => {
+    const cor    = TIPO_CORES[r.tipo] || '#999';
+    const dataFmt= new Date(r.data+'T12:00').toLocaleDateString('pt-BR');
+    const sCls   = {'Agendado':'s-agendado','Confirmado':'s-confirmado','Realizado':'s-realizado','Cancelado':'s-cancelado'}[r.status]||'s-agendado';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${dataFmt}</strong><br><small style="color:#7a9a82">${r.hora||''}</small></td>
+      <td>${r.paciente}<br><small style="color:#7a9a82;font-size:.7rem">${r.cpf||''}</small></td>
+      <td style="font-size:.78rem">${r.empresa}</td>
+      <td><span style="background:${cor};color:white;padding:.15rem .5rem;border-radius:5px;font-size:.68rem;font-weight:700;white-space:nowrap">${r.tipo}</span></td>
+      <td style="font-size:.78rem">${r.descricao}</td>
+      <td style="font-size:.78rem;color:#7a9a82">${r.medico||'—'}</td>
+      <td><span class="status-badge ${sCls}">${r.status}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn-icon" onclick="editarStatus('${r.id}')" title="Alterar status">✏️</button>
+        <button class="btn-icon" onclick="excluirAgendamento('${r.id}')" title="Excluir">🗑️</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- AÇÕES ----
+function editarStatus(id) {
+  const novo = prompt('Novo status:\n1 - Agendado\n2 - Confirmado\n3 - Realizado\n4 - Cancelado');
+  const map  = {'1':'Agendado','2':'Confirmado','3':'Realizado','4':'Cancelado'};
+  if (!map[novo]) return;
+  const lista = getLocal().map(r => r.id===id ? {...r, status:map[novo]} : r);
+  localStorage.setItem('gro_agendamentos', JSON.stringify(lista));
+  if (GRO_CONFIG.SHEETS_URL) {
+    fetch(GRO_CONFIG.SHEETS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'update', id, status:map[novo]}) });
+  }
+  mostrarToast('Status atualizado!', 'success');
+  carregarAgendamentos();
+}
+
+function excluirAgendamento(id) {
+  if (!confirm('Excluir este agendamento?')) return;
+  const lista = getLocal().filter(r => r.id !== id);
+  localStorage.setItem('gro_agendamentos', JSON.stringify(lista));
+  if (GRO_CONFIG.SHEETS_URL) {
+    fetch(GRO_CONFIG.SHEETS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'delete', id}) });
+  }
+  mostrarToast('Agendamento removido.', 'success');
+  carregarAgendamentos();
+}
+
+function limparForm() {
+  document.getElementById('formAgenda').reset();
+  document.getElementById('fData').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fHora').value = '08:00';
+  document.getElementById('fDescricao').innerHTML = '<option value="">Selecione o tipo primeiro</option>';
+}
+
+function mostrarToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${tipo} show`;
+  setTimeout(() => { t.className = `toast ${tipo}`; }, 3500);
+}
+</script>
+</body>
+</html>
