@@ -19,12 +19,8 @@
 <header class="header">
   <div class="header-inner">
     <div class="logo-block">
-      <!-- Logo GRO Saúde: S em hexágono -->
-      <svg viewBox="0 0 100 114" fill="none" xmlns="http://www.w3.org/2000/svg" width="42" height="48" style="flex-shrink:0">
-        <path d="M50 3L93 27V87L50 111L7 87V27L50 3Z" fill="rgba(255,255,255,0.18)"/>
-        <path d="M44 14H82C88.627 14 94 19.373 94 26C94 32.627 88.627 38 82 38H44C37.373 38 32 43.373 32 50" stroke="white" stroke-width="15" stroke-linecap="round"/>
-        <path d="M56 76H18C11.373 76 6 70.627 6 64C6 57.373 11.373 52 18 52H56C62.627 52 68 46.627 68 40" stroke="white" stroke-width="15" stroke-linecap="round"/>
-      </svg>
+      <!-- Logo oficial GRO Saúde -->
+      <img src="logo.svg" alt="GRO Saúde" class="logo-img" />
       <div class="logo-text">
         <span class="logo-main">GRO Saúde</span>
         <span class="logo-sub">Gestão de Segurança e Medicina Ocupacional</span>
@@ -92,7 +88,8 @@
       </select>
     </div>
     <button class="btn-reset" onclick="resetFiltros()">Limpar Filtros</button>
-    <button class="btn-reset" id="btnSyncSheets" onclick="sincronizarSheets()" style="margin-left:auto;border-color:#2980b9;color:#2980b9" title="Buscar dados do Google Sheets">⟳ Sincronizar Sheets</button>
+    <a href="#" onclick="window.open(GRO_CONFIG.getSheetEditUrl(),'_blank');return false;" class="btn-reset" style="margin-left:auto;border-color:#1abc9c;color:#16a085;text-decoration:none;display:inline-flex;align-items:center" title="Abrir planilha no Google Sheets">📊 Abrir Planilha</a>
+    <button class="btn-reset" id="btnSyncSheets" onclick="sincronizarSheets()" style="border-color:#2980b9;color:#2980b9" title="Ler dados da planilha">⟳ Sincronizar Planilha</button>
   </div>
 </section>
 

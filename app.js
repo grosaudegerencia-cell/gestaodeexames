@@ -34,17 +34,103 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!user) return;
 
   document.getElementById("userName").textContent = user.name;
+
+  // Mostra link "Gerenciar Usuários" apenas para admin
+  if (user.role === "admin") {
+    const nav = document.querySelector(".header-actions");
+    if (nav && !document.getElementById("linkUsuarios")) {
+      const a = document.createElement("a");
+      a.id = "linkUsuarios";
+      a.href = "usuarios.html";
+      a.className = "btn-agenda";
+      a.style.cssText = "background:rgba(255,255,255,.1)";
+      a.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg> Usuários';
+      nav.insertBefore(a, nav.firstChild);
+    }
+  }
+
   setDate();
+  mesclarAgendamentosLocais();
   populateFilters();
   applyFilters();
   setupListeners();
 
-  // Busca dados do Sheets se configurado
-  if (GRO_CONFIG.SHEETS_URL) sincronizarSheets();
-
-  // Mescla agendamentos locais como exames "Agendado"
-  mesclarAgendamentosLocais();
+  // Lê dados reais da planilha Google Sheets (se ativado em config)
+  if (GRO_CONFIG.USAR_SHEETS && GRO_CONFIG.SHEET_ID) {
+    lerPlanilhaCSV();
+  }
 });
+
+// ---- LEITURA DIRETA DA PLANILHA (gviz CSV, planilha pública) ----
+async function lerPlanilhaCSV() {
+  const btn = document.getElementById("btnSyncSheets");
+  if (btn) { btn.textContent = "⟳ Lendo planilha..."; btn.disabled = true; }
+  try {
+    const url = GRO_CONFIG.getSheetCsvUrl(GRO_CONFIG.SHEET_ABA);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const csv = await resp.text();
+    const registros = parseCSVExames(csv);
+    if (registros.length > 0) {
+      dadosOriginais = registros;
+      mesclarAgendamentosLocais();
+      populateFilters();
+      applyFilters();
+      if (btn) btn.textContent = "✓ Planilha conectada";
+      mostrarStatusConexao(true, registros.length);
+    } else {
+      if (btn) btn.textContent = "⟳ Sincronizar Planilha";
+      mostrarStatusConexao(false);
+    }
+  } catch (err) {
+    if (btn) btn.textContent = "⚠ Planilha não pública";
+    mostrarStatusConexao(false);
+  }
+  if (btn) { btn.disabled = false; setTimeout(() => { btn.textContent = "⟳ Sincronizar Planilha"; }, 5000); }
+}
+
+// Parser de CSV -> registros de exames
+function parseCSVExames(csv) {
+  const linhas = csv.split(/\r?\n/).filter(l => l.trim());
+  if (linhas.length < 2) return [];
+  const out = [];
+  for (let i = 1; i < linhas.length; i++) {
+    const campos = parseCSVLine(linhas[i]);
+    if (campos.length < 6) continue;
+    let data = (campos[0]||"").trim();
+    // normaliza data DD/MM/AAAA -> AAAA-MM-DD
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+      const [d,m,y] = data.split("/"); data = `${y}-${m}-${d}`;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue;
+    out.push({
+      data, tipo: (campos[1]||"").trim(), descricao: (campos[2]||"").trim(),
+      empresa: (campos[3]||"").trim(), paciente: (campos[4]||"").trim(),
+      status: (campos[5]||"Realizado").trim(),
+    });
+  }
+  return out;
+}
+
+function parseCSVLine(line) {
+  const res = []; let cur = ""; let q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (q && line[i+1] === '"') { cur += '"'; i++; } else q = !q; }
+    else if (c === "," && !q) { res.push(cur); cur = ""; }
+    else cur += c;
+  }
+  res.push(cur);
+  return res;
+}
+
+function mostrarStatusConexao(ok, n) {
+  const sub = document.getElementById("headerSubtitle");
+  if (ok && sub) sub.insertAdjacentHTML("beforeend", ` · <span style="color:#9be8b8">● planilha conectada (${n} registros)</span>`);
+}
+
+// Compat: botão antigo aponta para a nova leitura
+function sincronizarSheets() { lerPlanilhaCSV(); }
 
 function setDate() {
   const now = new Date();

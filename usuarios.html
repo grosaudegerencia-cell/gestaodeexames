@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Gerenciar Usuários — GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<link rel="stylesheet" href="style.css"/>
+<style>
+.page-body{max-width:920px;margin:0 auto;padding:1.5rem}
+.form-card{background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid #d4e6da;overflow:hidden;margin-bottom:1.5rem}
+.form-header{background:linear-gradient(135deg,#1a6e3c,#2EB45D);color:white;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.75rem}
+.form-header svg{width:22px;height:22px}
+.form-header-text{font-size:1rem;font-weight:700}
+.form-body{padding:1.5rem}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:.72rem;font-weight:700;color:#2d5a3d;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select{border:1.5px solid #d4e6da;border-radius:8px;padding:.55rem .85rem;font-size:.85rem;font-family:inherit;color:#1B392A;background:white}
+.field input:focus,.field select:focus{outline:none;border-color:#2EB45D}
+.btn-primary{height:42px;padding:0 1.5rem;background:linear-gradient(135deg,#1a6e3c,#2EB45D);border:none;border-radius:8px;color:white;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:1.25rem}
+.btn-primary:hover{opacity:.9}
+#usersTable{width:100%;border-collapse:collapse;font-size:.85rem}
+#usersTable thead th{background:#1B392A;color:white;padding:.65rem 1rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
+#usersTable tbody tr{border-bottom:1px solid #d4e6da}
+#usersTable tbody tr:hover{background:#eafaf1}
+#usersTable tbody td{padding:.65rem 1rem}
+.role-badge{padding:.18rem .6rem;border-radius:20px;font-size:.7rem;font-weight:700}
+.r-admin{background:#fdeaea;color:#c0392b}.r-medico{background:#e8f4fd;color:#2980b9}.r-user{background:#eafaf1;color:#1a6e3c}
+.tag-fixo{font-size:.65rem;color:#7f9e8a;font-style:italic}
+.btn-del{background:none;border:1.5px solid #fca5a5;color:#dc2626;border-radius:6px;padding:.25rem .65rem;cursor:pointer;font-size:.75rem;font-family:inherit}
+.btn-del:hover{background:#fef2f2}
+.btn-key{background:none;border:1.5px solid #d4e6da;color:#2d5a3d;border-radius:6px;padding:.25rem .65rem;cursor:pointer;font-size:.75rem;font-family:inherit;margin-right:.35rem}
+.btn-key:hover{border-color:#2EB45D}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:600;color:white;transform:translateY(80px);opacity:0;transition:all .35s;z-index:1000}
+.toast.show{transform:translateY(0);opacity:1}.toast.success{background:#1a6e3c}.toast.error{background:#dc2626}
+.info-box{background:#eafaf1;border-left:4px solid #2EB45D;border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:#2d5a3d;line-height:1.6;margin-bottom:1.25rem}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <img src="logo.svg" alt="GRO Saúde" style="height:42px;width:auto"/>
+      <div class="logo-text">
+        <span class="logo-main">GRO Saúde</span>
+        <span class="logo-sub">Gestão de Segurança e Medicina Ocupacional</span>
+      </div>
+    </div>
+    <div class="header-title"><h1>Gerenciar Usuários</h1><p id="userGreet">—</p></div>
+    <div class="header-actions" style="display:flex;gap:.75rem;align-items:center">
+      <a href="index.html" style="color:white;text-decoration:none;font-size:.82rem;opacity:.85;font-weight:500">← Dashboard</a>
+      <button onclick="GRO_AUTH.logout()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:.35rem .85rem;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="page-body">
+  <div class="info-box">
+    <strong>Área do Administrador.</strong> Aqui você cria e remove usuários do sistema. Os usuários criados aqui ficam salvos neste navegador.
+    Para usuários permanentes em qualquer dispositivo, adicione-os também no arquivo <code>config.js</code>.
+  </div>
+
+  <!-- NOVO USUÁRIO -->
+  <div class="form-card">
+    <div class="form-header">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+      <span class="form-header-text">Criar Novo Usuário</span>
+    </div>
+    <div class="form-body">
+      <form id="formUser" onsubmit="criarUsuario(event)">
+        <div class="form-grid">
+          <div class="field"><label>Nome completo *</label><input type="text" id="uName" placeholder="Ex: Maria Recepção" required/></div>
+          <div class="field"><label>Usuário (login) *</label><input type="text" id="uLogin" placeholder="Ex: maria" required/></div>
+          <div class="field"><label>Senha *</label><input type="text" id="uPass" placeholder="Senha de acesso" required/></div>
+          <div class="field"><label>Perfil *</label>
+            <select id="uRole">
+              <option value="user">Recepção / Operador</option>
+              <option value="medico">Médico</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary">+ Criar Usuário</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div class="form-card">
+    <div class="form-header">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="form-header-text">Usuários do Sistema</span>
+    </div>
+    <div class="form-body" style="padding:0">
+      <table id="usersTable">
+        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Tipo</th><th>Ações</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const u = GRO_AUTH.requireAdmin();
+  if (!u) return;
+  document.getElementById('userGreet').textContent = `Administrador: ${u.name}`;
+  renderUsers();
+});
+
+function criarUsuario(e) {
+  e.preventDefault();
+  const r = GRO_AUTH.criarUsuario({
+    name:     document.getElementById('uName').value,
+    username: document.getElementById('uLogin').value,
+    password: document.getElementById('uPass').value,
+    role:     document.getElementById('uRole').value,
+  });
+  if (r.ok) { toast('Usuário criado com sucesso!', 'success'); document.getElementById('formUser').reset(); renderUsers(); }
+  else toast(r.msg, 'error');
+}
+
+function renderUsers() {
+  const tb = document.getElementById('usersBody');
+  tb.innerHTML = '';
+  GRO_AUTH.getAllUsers().forEach(u => {
+    const rCls = {admin:'r-admin',medico:'r-medico',user:'r-user'}[u.role]||'r-user';
+    const rLbl = {admin:'Administrador',medico:'Médico',user:'Recepção'}[u.role]||u.role;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${u.name}</strong></td>
+      <td>${u.username}</td>
+      <td><span class="role-badge ${rCls}">${rLbl}</span></td>
+      <td>${u.fixo ? '<span class="tag-fixo">padrão (config.js)</span>' : 'criado por admin'}</td>
+      <td>${u.fixo
+        ? '<span class="tag-fixo">—</span>'
+        : `<button class="btn-key" onclick="trocarSenha('${u.username}')">Senha</button><button class="btn-del" onclick="remover('${u.username}')">Remover</button>`}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function remover(username) {
+  if (!confirm(`Remover o usuário "${username}"?`)) return;
+  GRO_AUTH.removerUsuario(username);
+  toast('Usuário removido.', 'success');
+  renderUsers();
+}
+
+function trocarSenha(username) {
+  const nova = prompt(`Nova senha para "${username}":`);
+  if (!nova) return;
+  const r = GRO_AUTH.alterarSenha(username, nova);
+  toast(r.ok ? 'Senha alterada!' : r.msg, r.ok ? 'success' : 'error');
+}
+
+function toast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${tipo} show`;
+  setTimeout(() => t.className = `toast ${tipo}`, 3200);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<svg width="200" height="228" viewBox="0 0 100 114" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexágono GRO Saúde -->
+  <path d="M50 2 L93 29 V85 L50 112 L7 85 V29 Z" fill="#2EB45D"/>
+  <!-- Símbolo S branco (duas faixas entrelaçadas) -->
+  <path d="M44 25 H78 C84 25 89 30 89 36 C89 42 84 47 78 47 H44 C40 47 37 50 37 54" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" fill="none"/>
+  <path d="M56 89 H22 C16 89 11 84 11 78 C11 72 16 67 22 67 H56 C60 67 63 64 63 60" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" fill="none"/>
+</svg>

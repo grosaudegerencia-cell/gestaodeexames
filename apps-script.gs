@@ -157,6 +157,90 @@ function inserirExame(d) {
   return { success: true };
 }
 
+// ============================================================
+//  FORMATAÇÃO BONITA — rode uma vez pelo menu Executar > embelezarPlanilha
+//  (deixa a planilha com a identidade visual da GRO Saúde)
+// ============================================================
+function embelezarPlanilha() {
+  const VERDE      = '#1a6e3c';
+  const VERDE_CLARO= '#eafaf1';
+  const VERDE_ESC  = '#1B392A';
+
+  ['Exames', 'Agendamentos'].forEach(nome => {
+    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome);
+    if (!aba) return;
+    const ultCol = aba.getLastColumn() || 6;
+    const ultLin = Math.max(aba.getLastRow(), 1);
+
+    // Cabeçalho
+    const head = aba.getRange(1, 1, 1, ultCol);
+    head.setBackground(VERDE).setFontColor('white').setFontWeight('bold')
+        .setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('middle');
+    aba.setRowHeight(1, 34);
+    aba.setFrozenRows(1);
+
+    // Corpo: fonte e bordas
+    if (ultLin > 1) {
+      const corpo = aba.getRange(2, 1, ultLin-1, ultCol);
+      corpo.setFontSize(10).setVerticalAlignment('middle');
+      // Linhas zebradas
+      aba.getRange(1, 1, ultLin, ultCol).applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREEN, true, false);
+    }
+
+    // Largura das colunas
+    aba.autoResizeColumns(1, ultCol);
+    for (let c = 1; c <= ultCol; c++) {
+      if (aba.getColumnWidth(c) < 110) aba.setColumnWidth(c, 110);
+    }
+
+    // Formatação condicional do Status (procura a coluna "Status")
+    const headers = aba.getRange(1,1,1,ultCol).getValues()[0];
+    const colStatus = headers.indexOf('Status') + 1;
+    if (colStatus > 0 && ultLin > 1) {
+      const rng = aba.getRange(2, colStatus, ultLin-1, 1);
+      const regras = [
+        criarRegra(rng, 'Realizado',  '#d5f5e3', '#1a6e3c'),
+        criarRegra(rng, 'Agendado',   '#fef9e7', '#b8860b'),
+        criarRegra(rng, 'Confirmado', '#dbeafe', '#1d4ed8'),
+        criarRegra(rng, 'Cancelado',  '#fdeaea', '#c0392b'),
+      ];
+      aba.setConditionalFormatRules(regras);
+    }
+  });
+
+  // Aba de resumo / capa
+  criarAbaResumo();
+  SpreadsheetApp.getActiveSpreadsheet().toast('Planilha formatada com sucesso!', 'GRO Saúde', 5);
+}
+
+function criarRegra(rng, texto, bg, fg) {
+  return SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(texto)
+    .setBackground(bg).setFontColor(fg).setBold(true)
+    .setRanges([rng]).build();
+}
+
+function criarAbaResumo() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let aba = ss.getSheetByName('📊 Resumo');
+  if (!aba) aba = ss.insertSheet('📊 Resumo', 0);
+  aba.clear();
+  const st = getEstatisticas();
+  aba.getRange('B2').setValue('GRO SAÚDE — RESUMO DE EXAMES')
+     .setFontSize(16).setFontWeight('bold').setFontColor('#1B392A');
+  aba.getRange('B3').setValue('Gestão de Segurança e Medicina Ocupacional')
+     .setFontColor('#2EB45D').setFontWeight('bold');
+  const linhas = [
+    ['Total de Exames', st.totalExames],
+    ['Exames Agendados', st.totalAgendados],
+    ['Exames Hoje', st.examesHoje],
+  ];
+  aba.getRange(5, 2, linhas.length, 2).setValues(linhas);
+  aba.getRange(5, 2, linhas.length, 1).setFontWeight('bold').setFontColor('#1a6e3c');
+  aba.setColumnWidth(2, 220); aba.setColumnWidth(3, 120);
+  aba.setHiddenGridlines(true);
+}
+
 // ---- ESTATÍSTICAS ----
 
 function getEstatisticas() {

@@ -49,6 +49,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
   display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
 }
 .logo-block { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
+.logo-img { height: 46px; width: auto; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
 .logo-text { display: flex; flex-direction: column; }
 .logo-main { font-size: 1.2rem; font-weight: 800; letter-spacing: -.3px; color: white; }
 .logo-sub  { font-size: .62rem; font-weight: 400; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .8px; }
