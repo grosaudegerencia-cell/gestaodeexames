@@ -248,11 +248,11 @@ function getConfig() {
   var aba = ensureSheet(TAB_CFG, HEAD_CFG); var v = aba.getDataRange().getValues();
   if (v.length < 2) return null;
   return { inicio:String(v[1][0]||'07:00'), fim:String(v[1][1]||'17:00'),
-           intervalo:Number(v[1][2]||10), almocoIni:String(v[1][3]||'12:00'), almocoFim:String(v[1][4]||'13:00') };
+           intervalo:Number(v[1][2]||5), almocoIni:String(v[1][3]||''), almocoFim:String(v[1][4]||'') };
 }
 function saveConfig(d) {
   var aba = ensureSheet(TAB_CFG, HEAD_CFG);
-  var row = [d.inicio||'07:00', d.fim||'17:00', d.intervalo||10, d.almocoIni||'', d.almocoFim||''];
+  var row = [d.inicio||'07:00', d.fim||'17:00', d.intervalo||5, d.almocoIni||'', d.almocoFim||''];
   if (aba.getLastRow() < 2) aba.appendRow(row);
   else aba.getRange(2,1,1,HEAD_CFG.length).setValues([row]);
   return { success:true };

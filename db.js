@@ -91,7 +91,7 @@ const GRO_DB = {
   },
 
   // ---------- Configuração da Agenda ----------
-  CFG_DEFAULT: { inicio:'07:00', fim:'17:00', intervalo:10, almocoIni:'12:00', almocoFim:'13:00' },
+  CFG_DEFAULT: { inicio:'07:00', fim:'17:00', intervalo:5, almocoIni:'', almocoFim:'' },
   getConfigAgenda() {
     try { return { ...this.CFG_DEFAULT, ...(JSON.parse(localStorage.getItem(this.CFG_KEY))||{}) }; }
     catch { return { ...this.CFG_DEFAULT }; }
@@ -121,7 +121,7 @@ const GRO_DB = {
     const c = this.getConfigAgenda();
     const [hi, mi] = c.inicio.split(':').map(Number);
     const [hf, mf] = c.fim.split(':').map(Number);
-    const ini = hi*60+mi, fim = hf*60+mf, step = c.intervalo||10;
+    const ini = hi*60+mi, fim = hf*60+mf, step = c.intervalo||5;
     const slots = [];
     for (let m = ini; m < fim; m += step) {
       const hh = String(Math.floor(m/60)).padStart(2,'0');
@@ -187,3 +187,26 @@ const GRO_DB = {
     return { ocupadas: ags.length, livres: Math.max(slots - ags.length, 0), total: slots };
   }
 };
+
+// ============================================================
+//  Migração da configuração da agenda (intervalo 5 min, sem almoço)
+//  Ajusta automaticamente qualquer configuração já salva no navegador:
+//  força vagas de 5 em 5 minutos e libera o horário de almoço.
+// ============================================================
+(function migrarConfigAgenda() {
+  try {
+    const KEY = 'gro_cfg_version';
+    const VER = '2';                       // aumente este número para reaplicar
+    if (localStorage.getItem(KEY) === VER) return;
+    let cfg = {};
+    try { cfg = JSON.parse(localStorage.getItem(GRO_DB.CFG_KEY)) || {}; } catch {}
+    cfg.intervalo = 5;                     // vagas de 5 em 5 minutos
+    cfg.almocoIni = '';                    // sem bloqueio de almoço
+    cfg.almocoFim = '';
+    localStorage.setItem(GRO_DB.CFG_KEY, JSON.stringify(cfg));
+    if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) {
+      try { GRO_SYNC.enviar('saveConfig', cfg); } catch {}   // propaga p/ a planilha
+    }
+    localStorage.setItem(KEY, VER);
+  } catch (e) { /* silencioso */ }
+})();

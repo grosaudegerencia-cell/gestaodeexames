@@ -105,14 +105,14 @@
         <div class="mfield"><label>Início</label><input type="time" id="cfgIni"/></div>
         <div class="mfield"><label>Fim</label><input type="time" id="cfgFim"/></div>
         <div class="mfield"><label>Intervalo (min)</label>
-          <select id="cfgInt"><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select>
+          <select id="cfgInt"><option value="5" selected>5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option></select>
         </div>
       </div>
       <div class="mrow">
-        <div class="mfield"><label>Almoço início</label><input type="time" id="cfgAlmI"/></div>
-        <div class="mfield"><label>Almoço fim</label><input type="time" id="cfgAlmF"/></div>
+        <div class="mfield"><label>Almoço início (opcional)</label><input type="time" id="cfgAlmI"/></div>
+        <div class="mfield"><label>Almoço fim (opcional)</label><input type="time" id="cfgAlmF"/></div>
       </div>
-      <p class="mhint">As vagas serão geradas automaticamente nesse intervalo (ex.: de 10 em 10 minutos).</p>
+      <p class="mhint">As vagas são geradas de 5 em 5 minutos. O horário de almoço é opcional — deixe em branco para liberar todo o período para agendamentos.</p>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
@@ -366,7 +366,7 @@ function salvarConfig() {
   GRO_DB.setConfigAgenda({
     inicio: document.getElementById('cfgIni').value || '07:00',
     fim:    document.getElementById('cfgFim').value || '17:00',
-    intervalo: parseInt(document.getElementById('cfgInt').value,10) || 10,
+    intervalo: parseInt(document.getElementById('cfgInt').value,10) || 5,
     almocoIni: document.getElementById('cfgAlmI').value,
     almocoFim: document.getElementById('cfgAlmF').value,
   });
