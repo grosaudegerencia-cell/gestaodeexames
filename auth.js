@@ -21,12 +21,20 @@ const GRO_AUTH = {
 
   // ---- Lista combinada: usuários do config + criados pelo admin (sem desativados) ----
   // Aplica as edições (overrides) feitas sobre os usuários padrão.
+  // Remove duplicatas por username (config.js tem precedência sobre localStorage).
   getAllUsers() {
     let extra = [];
     try { extra = JSON.parse(localStorage.getItem(this.USERS_KEY)) || []; } catch {}
     const desativados = this.getDisabled();
     const overrides = this.getOverrides();
-    return [...GRO_CONFIG.USERS, ...extra]
+    const vistos = new Set();
+    const unicos = [];
+    for (const u of [...GRO_CONFIG.USERS, ...extra]) {
+      if (vistos.has(u.username)) continue;   // config vem primeiro -> ganha
+      vistos.add(u.username);
+      unicos.push(u);
+    }
+    return unicos
       .filter(u => !desativados.includes(u.username))
       .map(u => overrides[u.username] ? { ...u, ...overrides[u.username] } : u);
   },

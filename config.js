@@ -45,10 +45,18 @@ const GRO_CONFIG = {
   //  Senhas em Base64 — gere em btoa('senha') no console (F12).
   //  Campo "email" é usado para recuperação de senha. Preencha com o e-mail
   //  real de cada colaborador (ou edite depois na tela "Usuários").
+  //  IMPORTANTE: usuários criados pela tela "Usuários" ficam salvos APENAS no
+  //  navegador onde foram criados (não funcionam em outro computador/celular).
+  //  Para um usuário acessar de QUALQUER dispositivo, cadastre-o aqui embaixo.
+  //  Senha padrão "gro2026" (Base64 Z3JvMjAyNg==) com troca obrigatória no 1º acesso.
   USERS: [
     { username: 'admin',    passwordB64: 'Z3JvQDIwMjY=', role: 'admin',  name: 'Administrador GRO', email: 'grosaudegerencia@gmail.com', fixo: true },
     { username: 'recepcao', passwordB64: 'Z3JvMjAyNg==', role: 'user',   name: 'Recepção GRO',      email: '', fixo: true },
     { username: 'medico',   passwordB64: 'Z3JvMjAyNg==', role: 'medico', name: 'Médico',            email: '', fixo: true },
+    // --- Colaboradores (acesso em qualquer dispositivo) ---
+    { username: 'marianas', passwordB64: 'Z3JvMjAyNg==', role: 'user', name: 'Mariana A. L. da Silva', email: 'marianaandradelopes2301@gmail.com', mustChangePassword: true, fixo: true },
+    { username: 'gabrielaq', passwordB64: 'Z3JvMjAyNg==', role: 'user', name: 'Gabriela A. Querici', email: 'gquerici@gmail.com', mustChangePassword: true, fixo: true },
+    { username: 'marcia',   passwordB64: 'Z3JvMjAyNg==', role: 'user', name: 'Elis Márcia', email: 'elismarcia03@hotmail.com', mustChangePassword: true, fixo: true },
   ],
 
   // Versão das credenciais. Ao aumentar este número, todos os navegadores
