@@ -34,7 +34,7 @@ Edite o arquivo **`data.js`** e substitua os registros de exemplo pelos dados ex
 ```js
 { data:"2026-01-15", tipo:"ASO Admissional", descricao:"Audiometria", empresa:"Nome da Empresa", paciente:"Nome do Paciente", status:"Realizado" }
 ```
-
+![image alt](image_https://github.com/grosaudegerencia-cell/evolucaodeexames/blob/1d59850ba113056e7d8e7528c60db430e46a243d/1.png)
 Campos:
 - **data:** `AAAA-MM-DD`
 - **tipo:** categoria do exame
