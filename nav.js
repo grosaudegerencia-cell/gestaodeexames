@@ -5,7 +5,7 @@
 // ============================================================
 
 (function () {
-  const LOGO = 'logo.svg';
+  const LOGO = 'logo.png';
   const MENU = [
     { id:'dashboard',  href:'index.html',     label:'Dashboard',        icon:'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z' },
     { id:'agenda',     href:'agenda.html',    label:'Agenda',           icon:'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
