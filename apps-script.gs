@@ -15,6 +15,12 @@
 //       - Executar como: Eu
 //       - Quem pode acessar: Qualquer pessoa
 //     Copie a URL gerada e cole em config.js  ->  SHEETS_URL
+//
+//  ░░ BASE HISTÓRICA AUTOMÁTICA ░░
+//  A função  importarBaseDoSite  lê o data.js publicado no site e regrava a
+//  aba "BaseExames" com TODOS os registros. Roda sozinha toda madrugada (4h)
+//  e também pode ser executada na mão (selecione importarBaseDoSite e ▶ Executar)
+//  ou pela URL:  SHEETS_URL?action=importarBase
 // ============================================================
 
 var EMAIL_RELATORIO = 'e-protecao@hotmail.com';
@@ -29,6 +35,12 @@ var TAB_PROC = 'Procedimentos';
 var TAB_TIPO = 'Tipos';
 var TAB_EMP  = 'Empresas';
 var TAB_CFG  = 'ConfigAgenda';
+var TAB_BASE = 'BaseExames';     // base histórica completa (espelho do data.js)
+var HEAD_BASE = ['Data','Tipo','Procedimento','Empresa','Paciente','Status'];
+
+// Endereço do data.js publicado no GitHub Pages (fonte da base histórica)
+var SITE_DATA_URL = 'https://grosaudegerencia-cell.github.io/gestaodeexames/data.js';
+var HORA_SYNC_BASE = 4;          // sincroniza a base toda madrugada (4h)
 var HEAD_USER = ['username','passwordB64','role','name','email','mustChangePassword'];
 var HEAD_PROC = ['nome','categoria'];
 var HEAD_CFG  = ['inicio','fim','intervalo','almocoIni','almocoFim'];
@@ -41,11 +53,53 @@ function instalarSistema() {
   ensureSheet(TAB_TIPO, ['nome']);
   ensureSheet(TAB_EMP,  ['nome']);
   ensureSheet(TAB_CFG,  HEAD_CFG);
+  ensureSheet(TAB_BASE, HEAD_BASE);
   embelezarPlanilha();      // formata bonito
   instalarGatilhoDiario();  // agenda o e-mail diário
+  instalarSyncBaseDiario(); // agenda a sincronização da base histórica
+  try { importarBaseDoSite(); } catch(e) {}   // já popula a base na instalação
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Sistema instalado! Abas criadas + relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO,
+    'Sistema instalado! Abas criadas + relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO +
+    ' + base histórica sincronizada do site.',
     'GRO Saúde', 8);
+}
+
+// ---------- SINCRONIZAÇÃO DA BASE HISTÓRICA (data.js -> planilha) ----------
+//  Lê o data.js publicado no GitHub Pages e regrava a aba "BaseExames"
+//  com TODOS os registros (Data | Tipo | Procedimento | Empresa | Paciente | Status).
+//  Pode ser executada manualmente (▶ Executar) ou pelo gatilho diário.
+function importarBaseDoSite() {
+  var raw = UrlFetchApp.fetch(SITE_DATA_URL, { muteHttpExceptions:true, followRedirects:true }).getContentText();
+  var ini = raw.indexOf('[');
+  var fim = raw.lastIndexOf(']');
+  if (ini < 0 || fim < 0) throw new Error('data.js sem array de registros');
+  var body = raw.substring(ini, fim + 1);
+  body = body.replace(/\/\/[^\n]*/g, '');                 // remove comentários //
+  body = body.replace(/([a-zA-Z_]\w*)\s*:/g, '"$1":');    // coloca aspas nas chaves
+  body = body.replace(/,\s*]/g, ']');                     // remove vírgula final
+  var arr = JSON.parse(body);
+
+  var aba = ensureSheet(TAB_BASE, HEAD_BASE);
+  aba.clearContents();
+  aba.getRange(1, 1, 1, HEAD_BASE.length).setValues([HEAD_BASE]);
+  var linhas = arr.map(function(r){
+    return [r.data, r.tipo, r.descricao, r.empresa, r.paciente, r.status];
+  });
+  if (linhas.length) aba.getRange(2, 1, linhas.length, HEAD_BASE.length).setValues(linhas);
+
+  // formatação do cabeçalho
+  aba.getRange(1,1,1,HEAD_BASE.length).setBackground('#1a6e3c').setFontColor('white')
+     .setFontWeight('bold').setHorizontalAlignment('center');
+  aba.setFrozenRows(1);
+  return { success:true, registros:linhas.length };
+}
+
+function instalarSyncBaseDiario() {
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if (t.getHandlerFunction() === 'importarBaseDoSite') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('importarBaseDoSite')
+    .timeBased().everyDays(1).atHour(HORA_SYNC_BASE).inTimezone(TZ).create();
 }
 
 // Garante que uma aba exista com o cabeçalho informado
@@ -75,6 +129,7 @@ function doGet(e) {
     else if (action === 'list')  out = { success:true, data: listar() };
     else if (action === 'stats') out = getEstatisticas();
     else if (action === 'enviarAgora') { enviarRelatorioDiario(); out = { success:true, msg:'Relatório enviado' }; }
+    else if (action === 'importarBase') out = importarBaseDoSite();
     else out = { error:'ação desconhecida' };
   } catch(err) { out = { error:String(err) }; }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
