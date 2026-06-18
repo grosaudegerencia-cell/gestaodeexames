@@ -42,7 +42,13 @@ const GRO_AUTH = {
   // ---- Sessão ----
   requireLogin() {
     if (!this.isLoggedIn()) { window.location.href = 'login.html'; return null; }
-    return this.getUser();
+    const u = this.getUser();
+    // Força a troca de senha no primeiro acesso (exceto já estando na tela de troca)
+    if (u && u.mustChangePassword && !/trocar-senha\.html(\?|$)/.test(location.pathname + location.search)) {
+      window.location.href = 'trocar-senha.html';
+      return null;
+    }
+    return u;
   },
 
   requireAdmin() {
@@ -73,6 +79,8 @@ const GRO_AUTH = {
     if (!user) return false;
     sessionStorage.setItem(this.SESSION_KEY, JSON.stringify({
       username: user.username, name: user.name, role: user.role,
+      email: user.email || '',
+      mustChangePassword: !!user.mustChangePassword,
       expires: Date.now() + 8 * 60 * 60 * 1000,
     }));
     return true;
@@ -85,14 +93,33 @@ const GRO_AUTH = {
 
   isAdmin() { const u = this.getUser(); return u && u.role === 'admin'; },
 
+  // Aplica um patch ({campo:valor}) ao usuário, seja ele padrão (override) ou criado pelo admin.
+  _patchUser(username, patch) {
+    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
+    if (fixo) {
+      const ov = this.getOverrides();
+      ov[username] = { ...(ov[username] || {}), ...patch };
+      this.saveOverrides(ov);
+    } else {
+      const extra = this.getExtraUsers();
+      const i = extra.findIndex(u => u.username === username);
+      if (i >= 0) { extra[i] = { ...extra[i], ...patch }; this.saveExtraUsers(extra); }
+    }
+  },
+
+  emailValido(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); },
+
   // ---- Gestão de usuários (admin) ----
-  criarUsuario({ username, password, name, role }) {
+  criarUsuario({ username, password, name, role, email, mustChangePassword }) {
     username = (username||'').trim().toLowerCase();
-    if (!username || !password || !name) return { ok:false, msg:'Preencha todos os campos.' };
+    email = (email||'').trim();
+    if (!username || !password || !name) return { ok:false, msg:'Preencha nome, usuário e senha.' };
+    if (email && !this.emailValido(email)) return { ok:false, msg:'E-mail inválido.' };
     if (this.getAllUsers().some(u => u.username === username))
       return { ok:false, msg:'Já existe um usuário com esse nome.' };
     const extra = this.getExtraUsers();
-    extra.push({ username, passwordB64: btoa(password), name, role: role||'user', fixo:false });
+    extra.push({ username, passwordB64: btoa(password), name, role: role||'user',
+                 email, mustChangePassword: mustChangePassword !== false, fixo:false });
     this.saveExtraUsers(extra);
     return { ok:true };
   },
@@ -125,15 +152,20 @@ const GRO_AUTH = {
     return { ok:true };
   },
 
-  // Edita nome, perfil e (opcionalmente) senha de qualquer usuário.
+  // Edita nome, perfil, e-mail e (opcionalmente) senha de qualquer usuário.
   // O username (login) não é alterável — é a identidade do usuário.
-  editarUsuario({ username, name, role, password }) {
+  editarUsuario({ username, name, role, password, email }) {
     username = (username||'').trim().toLowerCase();
     name = (name||'').trim();
     if (!name) return { ok:false, msg:'Informe o nome do usuário.' };
 
     const alvo = this.getAllUsers().find(u => u.username === username);
     if (!alvo) return { ok:false, msg:'Usuário não encontrado.' };
+
+    if (email != null) {
+      email = email.trim();
+      if (email && !this.emailValido(email)) return { ok:false, msg:'E-mail inválido.' };
+    }
 
     // Proteção: não rebaixar o último administrador ativo
     if (alvo.role === 'admin' && role && role !== 'admin') {
@@ -142,28 +174,17 @@ const GRO_AUTH = {
         return { ok:false, msg:'Não é possível alterar o perfil do único administrador.' };
     }
 
-    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
-    if (fixo) {
-      const ov = this.getOverrides();
-      const novo = { ...(ov[username] || {}), name, role: role || alvo.role };
-      if (password) novo.passwordB64 = btoa(password);
-      ov[username] = novo;
-      this.saveOverrides(ov);
-    } else {
-      const extra = this.getExtraUsers();
-      const i = extra.findIndex(u => u.username === username);
-      if (i < 0) return { ok:false, msg:'Usuário não encontrado.' };
-      extra[i].name = name;
-      extra[i].role = role || extra[i].role;
-      if (password) extra[i].passwordB64 = btoa(password);
-      this.saveExtraUsers(extra);
-    }
+    const patch = { name, role: role || alvo.role };
+    if (email != null) patch.email = email;
+    if (password) patch.passwordB64 = btoa(password);
+    this._patchUser(username, patch);
 
     // Se o usuário em edição é o que está logado, atualiza a sessão
     const atual = this.getUser();
     if (atual && atual.username === username) {
       atual.name = name;
       atual.role = role || atual.role;
+      if (email != null) atual.email = email;
       sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(atual));
     }
     return { ok:true };
@@ -171,16 +192,97 @@ const GRO_AUTH = {
 
   alterarSenha(username, novaSenha) {
     if (!novaSenha) return { ok:false, msg:'Informe a nova senha.' };
-    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
-    if (fixo) {
-      const ov = this.getOverrides();
-      ov[username] = { ...(ov[username] || {}), passwordB64: btoa(novaSenha) };
-      this.saveOverrides(ov);
+    if (!this.getAllUsers().some(u => u.username === username))
+      return { ok:false, msg:'Usuário não encontrado.' };
+    this._patchUser(username, { passwordB64: btoa(novaSenha) });
+    return { ok:true };
+  },
+
+  // ---- Troca de senha no primeiro acesso (usuário logado) ----
+  precisaTrocarSenha() {
+    const u = this.getUser();
+    return !!(u && u.mustChangePassword);
+  },
+
+  trocarSenhaLogado(senhaAtual, novaSenha) {
+    const u = this.getUser();
+    if (!u) return { ok:false, msg:'Sessão expirada. Faça login novamente.' };
+    const full = this.getAllUsers().find(x => x.username === u.username);
+    if (!full) return { ok:false, msg:'Usuário não encontrado.' };
+    if (atob(full.passwordB64) !== senhaAtual)
+      return { ok:false, msg:'A senha atual está incorreta.' };
+    if (!novaSenha || novaSenha.length < 4)
+      return { ok:false, msg:'A nova senha deve ter ao menos 4 caracteres.' };
+    if (novaSenha === senhaAtual)
+      return { ok:false, msg:'A nova senha deve ser diferente da atual.' };
+
+    this._patchUser(u.username, { passwordB64: btoa(novaSenha), mustChangePassword: false });
+    u.mustChangePassword = false;
+    sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(u));
+    return { ok:true };
+  },
+
+  // ---- Recuperação de senha por e-mail ----
+  RECOVERY_KEY: 'gro_recovery_codes',
+  getRecovery() { try { return JSON.parse(localStorage.getItem(this.RECOVERY_KEY)) || {}; } catch { return {}; } },
+  saveRecovery(o) { localStorage.setItem(this.RECOVERY_KEY, JSON.stringify(o)); },
+
+  // Localiza usuário por login OU e-mail
+  acharPorLoginOuEmail(valor) {
+    valor = (valor||'').trim().toLowerCase();
+    return this.getAllUsers().find(u =>
+      u.username === valor || (u.email||'').toLowerCase() === valor);
+  },
+
+  // Gera um código de 6 dígitos válido por 15 min. Retorna dados para o envio do e-mail.
+  gerarCodigoRecuperacao(loginOuEmail) {
+    const u = this.acharPorLoginOuEmail(loginOuEmail);
+    if (!u) return { ok:false, msg:'Usuário ou e-mail não encontrado.' };
+    if (!u.email) return { ok:false, msg:'Este usuário não tem e-mail cadastrado. Contate o administrador.' };
+    const code = String(Math.floor(100000 + Math.random()*900000));
+    const rec = this.getRecovery();
+    rec[u.username] = { code, expires: Date.now() + 15*60*1000 };
+    this.saveRecovery(rec);
+    return { ok:true, username:u.username, email:u.email, nome:u.name, code };
+  },
+
+  redefinirSenhaPorCodigo(loginOuEmail, code, novaSenha) {
+    const u = this.acharPorLoginOuEmail(loginOuEmail);
+    if (!u) return { ok:false, msg:'Usuário não encontrado.' };
+    const rec = this.getRecovery();
+    const r = rec[u.username];
+    if (!r) return { ok:false, msg:'Nenhum código foi solicitado. Solicite um novo.' };
+    if (Date.now() > r.expires) { delete rec[u.username]; this.saveRecovery(rec); return { ok:false, msg:'Código expirado. Solicite um novo.' }; }
+    if (String(code).trim() !== r.code) return { ok:false, msg:'Código incorreto.' };
+    if (!novaSenha || novaSenha.length < 4) return { ok:false, msg:'A senha deve ter ao menos 4 caracteres.' };
+
+    this._patchUser(u.username, { passwordB64: btoa(novaSenha), mustChangePassword: false });
+    delete rec[u.username]; this.saveRecovery(rec);
+    return { ok:true };
+  },
+
+  // Máscara para exibir e-mail parcialmente (ex.: jo***@gmail.com)
+  mascararEmail(email) {
+    if (!email || !email.includes('@')) return email || '';
+    const [u, d] = email.split('@');
+    const ini = u.slice(0, Math.min(2, u.length));
+    return `${ini}${'*'.repeat(Math.max(u.length-2, 1))}@${d}`;
+  },
+
+  // Dispara o e-mail com o código de recuperação via Apps Script (relay).
+  // Retorna uma Promise; em modo no-cors não há leitura da resposta.
+  async enviarEmailRecuperacao({ email, nome, code }) {
+    if (typeof GRO_CONFIG === 'undefined' || !GRO_CONFIG.SHEETS_URL)
+      return { ok:false, msg:'Envio de e-mail não configurado (SHEETS_URL).' };
+    try {
+      await fetch(GRO_CONFIG.SHEETS_URL, {
+        method:'POST', mode:'no-cors',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action:'recuperarSenha', data:{ to:email, nome, code } })
+      });
       return { ok:true };
+    } catch (e) {
+      return { ok:false, msg:'Falha ao contatar o servidor de e-mail.' };
     }
-    const extra = this.getExtraUsers();
-    const i = extra.findIndex(u => u.username === username);
-    if (i >= 0) { extra[i].passwordB64 = btoa(novaSenha); this.saveExtraUsers(extra); return { ok:true }; }
-    return { ok:false, msg:'Usuário não encontrado.' };
   }
 };

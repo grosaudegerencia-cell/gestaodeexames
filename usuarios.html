@@ -42,6 +42,10 @@
 .btn-cancel-edit{background:none;border:1.5px solid #d4e6da;color:#7f9e8a;border-radius:8px;padding:0 1.1rem;height:42px;cursor:pointer;font-size:.85rem;font-family:inherit;font-weight:600}
 .btn-cancel-edit:hover{border-color:#b0c4b8;color:#2d5a3d}
 .form-card.editing{box-shadow:0 0 0 2px #2EB45D, 0 2px 12px rgba(0,0,0,.08)}
+.chk-line{display:flex;align-items:center;gap:.5rem;margin:1rem 0 .25rem;font-size:.82rem;color:#2d5a3d;font-weight:600;cursor:pointer}
+.chk-line input{width:16px;height:16px;accent-color:#2EB45D;cursor:pointer}
+.u-email{font-size:.8rem;color:#4a6352}
+.u-noemail{font-size:.74rem;color:#c0392b;font-style:italic}
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.85rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:600;color:white;transform:translateY(80px);opacity:0;transition:all .35s;z-index:1000}
 .toast.show{transform:translateY(0);opacity:1}.toast.success{background:#1a6e3c}.toast.error{background:#dc2626}
 .info-box{background:#eafaf1;border-left:4px solid #2EB45D;border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:#2d5a3d;line-height:1.6;margin-bottom:1.25rem}
@@ -69,6 +73,7 @@
         <div class="form-grid">
           <div class="field"><label>Nome completo *</label><input type="text" id="uName" placeholder="Ex: Maria Recepção" required/></div>
           <div class="field"><label>Usuário (login) *</label><input type="text" id="uLogin" placeholder="Ex: maria" required/></div>
+          <div class="field"><label>E-mail (recuperação de senha)</label><input type="email" id="uEmail" placeholder="maria@email.com"/></div>
           <div class="field"><label id="lblPass">Senha *</label><input type="text" id="uPass" placeholder="Senha de acesso" required/></div>
           <div class="field"><label>Perfil *</label>
             <select id="uRole">
@@ -78,6 +83,7 @@
             </select>
           </div>
         </div>
+        <label class="chk-line" id="chkMustChangeLine"><input type="checkbox" id="uMustChange" checked/> Exigir troca de senha no primeiro acesso</label>
         <div style="display:flex;gap:.6rem;align-items:center">
           <button type="submit" class="btn-primary" id="btnSalvarUser">+ Criar Usuário</button>
           <button type="button" class="btn-cancel-edit" id="btnCancelarEdit" onclick="cancelarEdicao()" style="display:none">Cancelar edição</button>
@@ -94,7 +100,7 @@
     </div>
     <div class="form-body" style="padding:0">
       <table id="usersTable">
-        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Tipo</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Tipo</th><th>Ações</th></tr></thead>
         <tbody id="usersBody"></tbody>
       </table>
     </div>
@@ -122,10 +128,12 @@ function salvarUsuario(e) {
   const r = GRO_AUTH.criarUsuario({
     name:     document.getElementById('uName').value,
     username: document.getElementById('uLogin').value,
+    email:    document.getElementById('uEmail').value,
     password: document.getElementById('uPass').value,
     role:     document.getElementById('uRole').value,
+    mustChangePassword: document.getElementById('uMustChange').checked,
   });
-  if (r.ok) { toast('Usuário criado com sucesso!', 'success'); document.getElementById('formUser').reset(); renderUsers(); }
+  if (r.ok) { toast('Usuário criado com sucesso!', 'success'); cancelarEdicao(); renderUsers(); }
   else toast(r.msg, 'error');
 }
 
@@ -137,9 +145,11 @@ function editar(username) {
   document.getElementById('uName').value  = u.name;
   document.getElementById('uLogin').value = u.username;
   document.getElementById('uLogin').disabled = true;
+  document.getElementById('uEmail').value = u.email || '';
   document.getElementById('uPass').value = '';
   document.getElementById('uPass').required = false;
   document.getElementById('uRole').value = u.role;
+  document.getElementById('chkMustChangeLine').style.display = 'none';
   document.getElementById('formTitle').textContent = `Editar: ${u.name}`;
   document.getElementById('lblPass').textContent = 'Nova senha (deixe em branco para manter)';
   document.getElementById('uPass').placeholder = 'Deixe em branco para não alterar';
@@ -153,6 +163,7 @@ function salvarEdicao() {
   const r = GRO_AUTH.editarUsuario({
     username: editandoUsername,
     name:     document.getElementById('uName').value,
+    email:    document.getElementById('uEmail').value,
     password: document.getElementById('uPass').value,
     role:     document.getElementById('uRole').value,
   });
@@ -166,6 +177,8 @@ function cancelarEdicao() {
   f.reset();
   document.getElementById('uLogin').disabled = false;
   document.getElementById('uPass').required = true;
+  document.getElementById('chkMustChangeLine').style.display = 'flex';
+  document.getElementById('uMustChange').checked = true;
   document.getElementById('formTitle').textContent = 'Criar Novo Usuário';
   document.getElementById('lblPass').textContent = 'Senha *';
   document.getElementById('uPass').placeholder = 'Senha de acesso';
@@ -180,10 +193,14 @@ function renderUsers() {
   GRO_AUTH.getAllUsers().forEach(u => {
     const rCls = {admin:'r-admin',medico:'r-medico',user:'r-user'}[u.role]||'r-user';
     const rLbl = {admin:'Administrador',medico:'Médico',user:'Recepção'}[u.role]||u.role;
+    const emailCell = u.email
+      ? `<span class="u-email">${u.email}</span>`
+      : `<span class="u-noemail">sem e-mail</span>`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${u.name}</strong></td>
+      <td><strong>${u.name}</strong>${u.mustChangePassword ? ' <span class="tag-fixo">⚠ trocar senha</span>' : ''}</td>
       <td>${u.username}</td>
+      <td>${emailCell}</td>
       <td><span class="role-badge ${rCls}">${rLbl}</span></td>
       <td>${u.fixo ? '<span class="tag-fixo">padrão (config.js)</span>' : 'criado por admin'}</td>
       <td>

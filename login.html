@@ -30,6 +30,15 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 .hint{margin-top:1.5rem;padding:1rem;background:#eafaf1;border-radius:8px;font-size:.75rem;color:#2d5a3d;line-height:1.5}
 .hint strong{color:#1B392A}
 .footer-login{text-align:center;margin-top:1.5rem;font-size:.72rem;color:#b0c4b8}
+.forgot-link{display:block;width:100%;text-align:center;margin-top:1rem;font-size:.8rem;color:#1a6e3c;cursor:pointer;background:none;border:none;font-family:inherit;font-weight:600}
+.forgot-link:hover{text-decoration:underline}
+.ok-msg{background:#eafaf1;border:1px solid #86efac;color:#15803d;border-radius:8px;padding:.6rem .9rem;font-size:.8rem;margin-bottom:1rem;display:none}
+.rec-step{display:none}
+.rec-step.active{display:block}
+.step-info{font-size:.78rem;color:#7a9a82;text-align:center;margin-bottom:1.25rem;line-height:1.5}
+.code-input{letter-spacing:8px;text-align:center;font-size:1.3rem!important;font-weight:700}
+.back-link{display:block;width:100%;text-align:center;margin-top:1rem;font-size:.78rem;color:#b0c4b8;cursor:pointer;background:none;border:none;font-family:inherit}
+.back-link:hover{color:#7a9a82}
 </style>
 </head>
 <body>
@@ -44,23 +53,65 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
   <h2 class="login-title">Acesso ao Sistema</h2>
   <p class="login-desc">Entre com suas credenciais para acessar o dashboard</p>
 
-  <div class="error-msg" id="errorMsg">Usuário ou senha incorretos.</div>
+  <!-- LOGIN -->
+  <div id="viewLogin">
+    <div class="error-msg" id="errorMsg">Usuário ou senha incorretos.</div>
 
-  <form id="loginForm" onsubmit="doLogin(event)">
-    <div class="field">
-      <label for="username">Usuário</label>
-      <input type="text" id="username" placeholder="Digite seu usuário" autocomplete="username" required/>
-    </div>
-    <div class="field">
-      <label for="password">Senha</label>
-      <input type="password" id="password" placeholder="Digite sua senha" autocomplete="current-password" required/>
-    </div>
-    <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
-  </form>
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <div class="field">
+        <label for="username">Usuário</label>
+        <input type="text" id="username" placeholder="Digite seu usuário" autocomplete="username" required/>
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input type="password" id="password" placeholder="Digite sua senha" autocomplete="current-password" required/>
+      </div>
+      <button type="submit" class="btn-login" id="btnLogin">Entrar</button>
+    </form>
 
-  <div class="hint">
-    Acesso restrito a colaboradores autorizados da GRO Saúde.<br>
-    Em caso de dúvidas sobre seu acesso, contate o administrador.
+    <button class="forgot-link" onclick="abrirRecuperacao()">Esqueci minha senha</button>
+
+    <div class="hint">
+      Acesso restrito a colaboradores autorizados da GRO Saúde.<br>
+      Em caso de dúvidas sobre seu acesso, contate o administrador.
+    </div>
+  </div>
+
+  <!-- RECUPERAÇÃO DE SENHA -->
+  <div id="viewRecuperar" style="display:none">
+    <h2 class="login-title">Recuperar Senha</h2>
+    <div class="error-msg" id="recErr"></div>
+    <div class="ok-msg" id="recOk"></div>
+
+    <!-- Passo 1: solicitar código -->
+    <div class="rec-step active" id="recStep1">
+      <p class="step-info">Informe seu usuário ou e-mail cadastrado. Enviaremos um código de verificação para o seu e-mail.</p>
+      <form onsubmit="solicitarCodigo(event)">
+        <div class="field">
+          <label for="recLogin">Usuário ou e-mail</label>
+          <input type="text" id="recLogin" placeholder="seu usuário ou e-mail" required/>
+        </div>
+        <button type="submit" class="btn-login" id="btnEnviarCodigo">Enviar código</button>
+      </form>
+    </div>
+
+    <!-- Passo 2: validar código e redefinir -->
+    <div class="rec-step" id="recStep2">
+      <p class="step-info" id="recStep2Info">Digite o código de 6 dígitos enviado ao seu e-mail e crie uma nova senha.</p>
+      <form onsubmit="redefinir(event)">
+        <div class="field">
+          <label for="recCode">Código de verificação</label>
+          <input type="text" id="recCode" class="code-input" placeholder="000000" inputmode="numeric" maxlength="6" required/>
+        </div>
+        <div class="field">
+          <label for="recNova">Nova senha</label>
+          <input type="password" id="recNova" placeholder="Mínimo de 4 caracteres" autocomplete="new-password" required/>
+        </div>
+        <button type="submit" class="btn-login" id="btnRedefinir">Redefinir senha</button>
+      </form>
+    </div>
+
+    <button class="back-link" onclick="voltarLogin()">← Voltar ao login</button>
   </div>
 
   <p class="footer-login">© 2026 GRO Saúde — Sistema interno de gestão</p>
@@ -68,7 +119,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  if (GRO_AUTH.isLoggedIn()) window.location.href = 'index.html';
+  if (GRO_AUTH.isLoggedIn()) {
+    const u = GRO_AUTH.getUser();
+    window.location.href = (u && u.mustChangePassword) ? 'trocar-senha.html' : 'index.html';
+  }
 });
 
 function doLogin(e) {
@@ -84,13 +138,85 @@ function doLogin(e) {
       document.getElementById('password').value
     );
     if (ok) {
-      window.location.href = 'index.html';
+      const u = GRO_AUTH.getUser();
+      window.location.href = (u && u.mustChangePassword) ? 'trocar-senha.html' : 'index.html';
     } else {
       err.style.display = 'block';
       btn.textContent = 'Entrar';
       btn.disabled = false;
     }
   }, 400);
+}
+
+// ---------- RECUPERAÇÃO DE SENHA ----------
+let recLoginAtual = '';
+
+function abrirRecuperacao() {
+  document.getElementById('viewLogin').style.display = 'none';
+  document.getElementById('viewRecuperar').style.display = 'block';
+  recReset();
+}
+function voltarLogin() {
+  document.getElementById('viewRecuperar').style.display = 'none';
+  document.getElementById('viewLogin').style.display = 'block';
+}
+function recReset() {
+  document.getElementById('recStep1').classList.add('active');
+  document.getElementById('recStep2').classList.remove('active');
+  document.getElementById('recErr').style.display = 'none';
+  document.getElementById('recOk').style.display = 'none';
+  document.getElementById('recLogin').value = '';
+  document.getElementById('recCode').value = '';
+  document.getElementById('recNova').value = '';
+}
+function recMsg(tipo, txt) {
+  const el = document.getElementById(tipo === 'err' ? 'recErr' : 'recOk');
+  const outro = document.getElementById(tipo === 'err' ? 'recOk' : 'recErr');
+  outro.style.display = 'none';
+  el.textContent = txt; el.style.display = 'block';
+}
+
+async function solicitarCodigo(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnEnviarCodigo');
+  const login = document.getElementById('recLogin').value.trim();
+  document.getElementById('recErr').style.display = 'none';
+  document.getElementById('recOk').style.display = 'none';
+
+  const g = GRO_AUTH.gerarCodigoRecuperacao(login);
+  if (!g.ok) { recMsg('err', g.msg); return; }
+
+  recLoginAtual = login;
+  btn.textContent = 'Enviando...'; btn.disabled = true;
+
+  const env = await GRO_AUTH.enviarEmailRecuperacao({ email: g.email, nome: g.nome, code: g.code });
+  btn.textContent = 'Enviar código'; btn.disabled = false;
+
+  // Avança para o passo 2 (o código já está válido localmente, válido por 15 min)
+  document.getElementById('recStep1').classList.remove('active');
+  document.getElementById('recStep2').classList.add('active');
+  document.getElementById('recStep2Info').textContent =
+    `Enviamos um código de 6 dígitos para ${GRO_AUTH.mascararEmail(g.email)}. Digite-o abaixo e crie sua nova senha.`;
+
+  if (!env.ok) {
+    recMsg('err', 'Não foi possível enviar o e-mail automaticamente (' + (env.msg||'serviço indisponível') + '). Contate o administrador.');
+  } else {
+    recMsg('ok', 'Código enviado! Verifique sua caixa de entrada e o spam.');
+  }
+}
+
+function redefinir(e) {
+  e.preventDefault();
+  const code = document.getElementById('recCode').value.trim();
+  const nova = document.getElementById('recNova').value;
+  const r = GRO_AUTH.redefinirSenhaPorCodigo(recLoginAtual, code, nova);
+  if (!r.ok) { recMsg('err', r.msg); return; }
+  recMsg('ok', 'Senha redefinida com sucesso! Você já pode entrar.');
+  setTimeout(() => {
+    voltarLogin();
+    document.getElementById('username').value = recLoginAtual;
+    document.getElementById('password').focus();
+  }, 1400);
 }
 </script>
 </body>

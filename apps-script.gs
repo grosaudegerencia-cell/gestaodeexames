@@ -64,6 +64,7 @@ function doPost(e) {
     if (a === 'insert')      out = inserir(d);
     else if (a === 'update') out = atualizar(d);
     else if (a === 'delete') out = excluir(d.id);
+    else if (a === 'recuperarSenha') out = enviarCodigoRecuperacao(d);
     else out = { error:'ação desconhecida' };
   } catch(err) { out = { error:String(err) }; }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
@@ -121,6 +122,31 @@ function excluir(id) {
   var aba = getAba(); var v = aba.getDataRange().getValues();
   for (var i=v.length-1;i>=1;i--) if (String(v[i][0])===String(id)) { aba.deleteRow(i+1); return {success:true}; }
   return { error:'não encontrado' };
+}
+
+// ---------- RECUPERAÇÃO DE SENHA (envio de código por e-mail) ----------
+function enviarCodigoRecuperacao(d) {
+  if (!d || !d.to || !d.code) return { error:'dados incompletos' };
+  var nome = d.nome || 'usuário';
+  var code = String(d.code);
+  var html =
+  '<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#1B392A">'+
+    '<div style="background:linear-gradient(135deg,#1B392A,#16A94A);color:#fff;padding:22px 24px;border-radius:12px 12px 0 0">'+
+      '<h2 style="margin:0">GRO Saúde — Recuperação de Senha</h2>'+
+      '<p style="margin:4px 0 0;opacity:.85">Gestão de Segurança e Medicina Ocupacional</p>'+
+    '</div>'+
+    '<div style="border:1px solid #e3efe8;border-top:none;padding:26px;border-radius:0 0 12px 12px">'+
+      '<p>Olá, <b>'+nome+'</b>.</p>'+
+      '<p>Recebemos uma solicitação para redefinir a senha de acesso ao Sistema GRO Saúde. Use o código abaixo para criar uma nova senha:</p>'+
+      '<div style="text-align:center;margin:24px 0">'+
+        '<div style="display:inline-block;background:#eafaf1;border:2px dashed #16A94A;border-radius:12px;padding:16px 32px;font-size:34px;font-weight:800;letter-spacing:8px;color:#1a6e3c">'+code+'</div>'+
+      '</div>'+
+      '<p style="color:#7f9e8a;font-size:13px">Este código expira em <b>15 minutos</b>. Se você não solicitou a recuperação, ignore este e-mail — sua senha permanece a mesma.</p>'+
+      '<p style="margin-top:22px;font-size:12px;color:#9db3a4">E-mail automático do Sistema GRO Saúde.</p>'+
+    '</div>'+
+  '</div>';
+  MailApp.sendEmail({ to:d.to, subject:'GRO Saúde — Código de recuperação de senha: '+code, htmlBody:html });
+  return { success:true };
 }
 
 // ---------- RELATÓRIO DIÁRIO POR E-MAIL ----------

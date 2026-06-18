@@ -43,10 +43,12 @@ const GRO_CONFIG = {
   //  O admin pode criar/remover usuários adicionais pela tela
   //  "Gerenciar Usuários" (ficam salvos no navegador).
   //  Senhas em Base64 — gere em btoa('senha') no console (F12).
+  //  Campo "email" é usado para recuperação de senha. Preencha com o e-mail
+  //  real de cada colaborador (ou edite depois na tela "Usuários").
   USERS: [
-    { username: 'admin',    passwordB64: 'Z3JvQDIwMjY=',     role: 'admin',  name: 'Administrador GRO', fixo: true },
-    { username: 'recepcao', passwordB64: 'cmVjZXBAMjAyNg==', role: 'user',   name: 'Recepção GRO',      fixo: true },
-    { username: 'medico',   passwordB64: 'bWVkQDIwMjY=',     role: 'medico', name: 'Médico',            fixo: true },
+    { username: 'admin',    passwordB64: 'Z3JvQDIwMjY=',     role: 'admin',  name: 'Administrador GRO', email: 'grosaudegerencia@gmail.com', fixo: true },
+    { username: 'recepcao', passwordB64: 'cmVjZXBAMjAyNg==', role: 'user',   name: 'Recepção GRO',      email: '', fixo: true },
+    { username: 'medico',   passwordB64: 'bWVkQDIwMjY=',     role: 'medico', name: 'Médico',            email: '', fixo: true },
   ],
 
   CLINICA: {

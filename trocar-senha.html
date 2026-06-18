@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Trocar Senha — GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#0d3320 0%,#1a6e3c 50%,#0d3320 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.card{background:white;border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,.35)}
+.logo-area{text-align:center;margin-bottom:1.5rem}
+.logo-svg{width:70px;height:80px;margin:0 auto .8rem}
+.brand-name{font-size:1.6rem;font-weight:800;color:#1B392A;line-height:1}
+.brand-sub{font-size:.66rem;font-weight:600;color:#3AB86A;text-transform:uppercase;letter-spacing:1px;margin-top:.3rem}
+.title{font-size:1.05rem;font-weight:700;color:#1B392A;text-align:center;margin-bottom:.3rem}
+.desc{font-size:.82rem;color:#7a9a82;text-align:center;margin-bottom:1.6rem;line-height:1.5}
+.field{margin-bottom:1.1rem}
+.field label{display:block;font-size:.76rem;font-weight:600;color:#2d5a3d;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+.field input{width:100%;height:46px;border:2px solid #d4e6da;border-radius:10px;padding:0 1rem;font-size:.9rem;font-family:inherit;color:#1B392A;transition:border-color .2s}
+.field input:focus{outline:none;border-color:#3AB86A}
+.msg{border-radius:8px;padding:.6rem .9rem;font-size:.8rem;margin-bottom:1rem;display:none}
+.msg.err{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626}
+.msg.ok{background:#eafaf1;border:1px solid #86efac;color:#15803d}
+.btn{width:100%;height:48px;background:linear-gradient(135deg,#1a6e3c,#2ecc71);border:none;border-radius:10px;color:white;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;letter-spacing:.3px}
+.btn:hover{opacity:.9}
+.hint{margin-top:1.25rem;font-size:.74rem;color:#7a9a82;text-align:center;line-height:1.5}
+.logout-link{display:block;text-align:center;margin-top:1rem;font-size:.78rem;color:#b0c4b8;cursor:pointer;background:none;border:none;font-family:inherit;width:100%}
+.logout-link:hover{color:#7a9a82}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-area">
+    <img src="logo.svg" alt="GRO Saúde" class="logo-svg" style="display:block"/>
+    <div class="brand-name">GRO Saúde</div>
+    <div class="brand-sub">Gestão de Segurança e Medicina Ocupacional</div>
+  </div>
+
+  <h2 class="title">Primeiro acesso — defina sua senha</h2>
+  <p class="desc" id="desc">Por segurança, crie uma nova senha pessoal antes de continuar.</p>
+
+  <div class="msg err" id="msgErr"></div>
+  <div class="msg ok" id="msgOk"></div>
+
+  <form id="form" onsubmit="trocar(event)">
+    <div class="field">
+      <label for="atual">Senha atual</label>
+      <input type="password" id="atual" placeholder="A senha que você usou para entrar" autocomplete="current-password" required/>
+    </div>
+    <div class="field">
+      <label for="nova">Nova senha</label>
+      <input type="password" id="nova" placeholder="Mínimo de 4 caracteres" autocomplete="new-password" required/>
+    </div>
+    <div class="field">
+      <label for="conf">Confirmar nova senha</label>
+      <input type="password" id="conf" placeholder="Repita a nova senha" autocomplete="new-password" required/>
+    </div>
+    <button type="submit" class="btn" id="btn">Salvar nova senha</button>
+  </form>
+
+  <p class="hint">Esta etapa só aparece no primeiro acesso. Depois você acessa normalmente com a nova senha.</p>
+  <button class="logout-link" onclick="GRO_AUTH.logout()">Sair</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Precisa estar logado; se não precisar trocar, vai direto ao sistema
+  if (!GRO_AUTH.isLoggedIn()) { window.location.href = 'login.html'; return; }
+  const u = GRO_AUTH.getUser();
+  if (u && !u.mustChangePassword) { window.location.href = 'index.html'; return; }
+  document.getElementById('desc').textContent =
+    `Olá, ${u.name}. Por segurança, crie uma nova senha pessoal antes de continuar.`;
+});
+
+function trocar(e) {
+  e.preventDefault();
+  const err = document.getElementById('msgErr');
+  const ok  = document.getElementById('msgOk');
+  const btn = document.getElementById('btn');
+  err.style.display = ok.style.display = 'none';
+
+  const atual = document.getElementById('atual').value;
+  const nova  = document.getElementById('nova').value;
+  const conf  = document.getElementById('conf').value;
+
+  if (nova !== conf) { err.textContent = 'A confirmação não confere com a nova senha.'; err.style.display = 'block'; return; }
+
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+  const r = GRO_AUTH.trocarSenhaLogado(atual, nova);
+  if (r.ok) {
+    ok.textContent = 'Senha alterada com sucesso! Redirecionando...';
+    ok.style.display = 'block';
+    setTimeout(() => window.location.href = 'index.html', 1100);
+  } else {
+    err.textContent = r.msg; err.style.display = 'block';
+    btn.textContent = 'Salvar nova senha'; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
