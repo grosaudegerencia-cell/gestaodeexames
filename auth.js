@@ -286,3 +286,37 @@ const GRO_AUTH = {
     }
   }
 };
+
+// ============================================================
+//  Migração de credenciais (reset automático por versão)
+//  Quando GRO_CONFIG.CRED_VERSION aumenta, cada navegador:
+//   • reabilita os usuários padrão que possam ter sido desativados;
+//   • descarta senhas/flag de troca sobrescritas localmente (overrides),
+//     fazendo valer as senhas definidas em config.js (exceto admin).
+// ============================================================
+(function migrarCredenciais() {
+  try {
+    if (typeof GRO_CONFIG === 'undefined') return;
+    const KEY = 'gro_cred_version';
+    const ver = String(GRO_CONFIG.CRED_VERSION || 0);
+    if (localStorage.getItem(KEY) === ver) return;
+
+    // 1) Reabilita TODOS os usuários padrão (remove-os da lista de desativados)
+    const dis = GRO_AUTH.getDisabled().filter(
+      x => !GRO_CONFIG.USERS.some(u => u.username === x)
+    );
+    GRO_AUTH.saveDisabled(dis);
+
+    // 2) Limpa overrides de senha/troca dos usuários padrão (menos admin)
+    const ov = GRO_AUTH.getOverrides();
+    GRO_CONFIG.USERS.forEach(u => {
+      if (u.username === 'admin' || !ov[u.username]) return;
+      delete ov[u.username].passwordB64;
+      delete ov[u.username].mustChangePassword;
+      if (Object.keys(ov[u.username]).length === 0) delete ov[u.username];
+    });
+    GRO_AUTH.saveOverrides(ov);
+
+    localStorage.setItem(KEY, ver);
+  } catch (e) { /* silencioso */ }
+})();

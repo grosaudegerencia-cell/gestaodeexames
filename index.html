@@ -30,7 +30,7 @@
     </div>
     <div class="dash-title-actions">
       <a href="#" onclick="window.open(GRO_CONFIG.getSheetEditUrl(),'_blank');return false;" class="btn-reset" style="border-color:#1abc9c;color:#16a085;text-decoration:none;display:inline-flex;align-items:center" title="Abrir planilha de agenda">📊 Planilha</a>
-      <button class="btn-reset" id="btnSyncSheets" onclick="sincronizarSheets()" style="border-color:#2980b9;color:#2980b9" title="Ler dados da planilha">⟳ Sincronizar</button>
+      <button class="btn-reset admin-only" id="btnSyncSheets" onclick="sincronizarSheets()" style="border-color:#2980b9;color:#2980b9;display:none" title="Ler dados da planilha (Admin)">⟳ Sincronizar</button>
       <button class="btn-reset admin-only" id="btnExportCSV" onclick="exportarCSV()" style="border-color:#2ecc71;color:#1a6e3c;display:none" title="Exportar dados filtrados como CSV (Admin)">⬇ Exportar CSV</button>
       <button class="btn-reset admin-only" id="btnAlimentarAgenda" onclick="alimentarAgenda()" style="border-color:#9b59b6;color:#8e44ad;display:none" title="Importar dados históricos para a Agenda (Admin)">📅 Alimentar Agenda</button>
       <span class="last-update"><span class="update-label">Atualizado</span><span id="dataAtual" class="update-date"></span></span>

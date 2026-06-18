@@ -46,10 +46,15 @@ const GRO_CONFIG = {
   //  Campo "email" é usado para recuperação de senha. Preencha com o e-mail
   //  real de cada colaborador (ou edite depois na tela "Usuários").
   USERS: [
-    { username: 'admin',    passwordB64: 'Z3JvQDIwMjY=',     role: 'admin',  name: 'Administrador GRO', email: 'grosaudegerencia@gmail.com', fixo: true },
-    { username: 'recepcao', passwordB64: 'cmVjZXBAMjAyNg==', role: 'user',   name: 'Recepção GRO',      email: '', fixo: true },
-    { username: 'medico',   passwordB64: 'bWVkQDIwMjY=',     role: 'medico', name: 'Médico',            email: '', fixo: true },
+    { username: 'admin',    passwordB64: 'Z3JvQDIwMjY=', role: 'admin',  name: 'Administrador GRO', email: 'grosaudegerencia@gmail.com', fixo: true },
+    { username: 'recepcao', passwordB64: 'Z3JvMjAyNg==', role: 'user',   name: 'Recepção GRO',      email: '', fixo: true },
+    { username: 'medico',   passwordB64: 'Z3JvMjAyNg==', role: 'medico', name: 'Médico',            email: '', fixo: true },
   ],
+
+  // Versão das credenciais. Ao aumentar este número, todos os navegadores
+  // reabilitam os usuários padrão e descartam senhas alteradas localmente
+  // (overrides), forçando o uso das senhas definidas acima em USERS.
+  CRED_VERSION: 2,
 
   CLINICA: {
     nome:   'GRO Saúde',
