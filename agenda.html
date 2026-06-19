@@ -27,6 +27,8 @@
 .mrow-wrap{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-start}
 .btn-mini-blue{background:#eef6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;padding:.3rem .65rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn-mini-blue:hover{background:#dbeafe}
+.btn-pdf{display:inline-flex;align-items:center;gap:.35rem;background:#fff;color:#1a6e3c;border:1.5px solid #3AB86A;border-radius:8px;padding:.34rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-pdf:hover{background:#eafaf1}
 </style>
 </head>
 <body class="sys-body">
@@ -44,6 +46,7 @@
       <span class="agenda-dow" id="agendaDow"></span>
     </div>
     <div class="agenda-stats">
+      <button class="btn-pdf" onclick="exportarDiaPDF()" title="Exportar atendimentos do dia em PDF">🖨 Exportar dia (PDF)</button>
       <span class="ag-chip ag-chip-livre">Livres: <strong id="stLivres">—</strong></span>
       <span class="ag-chip ag-chip-ocup">Ocupadas: <strong id="stOcup">—</strong></span>
       <span class="ag-chip ag-chip-total">Total de vagas: <strong id="stTotal">—</strong></span>
@@ -119,7 +122,7 @@
         <div class="mfield"><label>Tipo de Exame *</label><select id="mTipo"></select></div>
       </div>
 
-      <!-- Contabilidade: localizar por parte do nome -->
+      <!-- Contabilidade + Cargo: localizar por parte do nome -->
       <div class="mrow">
         <div class="mfield grow">
           <label>Contabilidade</label>
@@ -129,6 +132,16 @@
               <div id="contSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="contabilidadeModal()" title="Cadastrar contabilidade">+ Nova</button>
+          </div>
+        </div>
+        <div class="mfield grow">
+          <label>Cargo</label>
+          <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
+            <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
+              <input type="text" id="mCargo" placeholder="Buscar cargo..." autocomplete="off" style="width:100%" onfocus="buscarCargo()" oninput="buscarCargo()"/>
+              <div id="cargoSugg" class="sugg-list" style="display:none"></div>
+            </div>
+            <button type="button" class="btn-mini btn-mini-add" onclick="novoCargoModal()" title="Cadastrar cargo">+ Novo</button>
           </div>
         </div>
       </div>
@@ -226,6 +239,21 @@
       <div style="flex:1"></div>
       <button class="btn-secondary" onclick="fecharModalCont()">Cancelar</button>
       <button class="btn-primary" onclick="salvarContabilidade()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-MODAL: Novo Cargo -->
+<div class="modal-overlay" id="modalCargo">
+  <div class="modal-card" style="max-width:360px">
+    <div class="modal-head"><h3>Cadastrar Cargo</h3><button class="modal-x" onclick="fecharModalCargo()">×</button></div>
+    <div class="modal-body">
+      <div class="mfield"><label>Nome do Cargo *</label><input type="text" id="cargoNome" placeholder="Ex.: Operador de Empilhadeira"/></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-secondary" onclick="fecharModalCargo()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarNovoCargo()">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -418,6 +446,7 @@ function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
   document.getElementById('mMedico').value   = '';
   document.getElementById('mEmpresa').value  = empresa;
   document.getElementById('mContabilidade').value = '';
+  document.getElementById('mCargo').value    = '';
   document.getElementById('mTipo').value     = tipo;
   document.getElementById('mStatus').value   = status || 'Agendado';
   document.getElementById('novoProc').value  = '';
@@ -530,6 +559,46 @@ function selecionarContabilidade(nome) {
   document.getElementById('contSugg').style.display = 'none';
 }
 
+// ---------- CARGO (busca por parte do nome + cadastrar novo) ----------
+function listaCargos() {
+  const saved = JSON.parse(localStorage.getItem('gro_cargos_cad')||'[]');
+  const fromHist = GRO_DB.getAgendamentos().map(a=>a.cargo).filter(Boolean);
+  return [...new Set([...saved, ...fromHist])].sort((a,b)=>a.localeCompare(b));
+}
+function buscarCargo() {
+  const q = (document.getElementById('mCargo').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('cargoSugg');
+  let list = listaCargos();
+  if (q) list = list.filter(c => c.toLowerCase().includes(q));
+  if (!list.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = list.slice(0,12).map(c => {
+    const ne = c.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarCargo('${ne}')"><strong>${c}</strong></div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+function selecionarCargo(nome) {
+  document.getElementById('mCargo').value = nome;
+  document.getElementById('cargoSugg').style.display = 'none';
+}
+function novoCargoModal() {
+  document.getElementById('cargoNome').value = document.getElementById('mCargo').value.trim();
+  fecharSuggs();
+  document.getElementById('modalCargo').classList.add('show');
+}
+function fecharModalCargo() { document.getElementById('modalCargo').classList.remove('show'); }
+function salvarNovoCargo() {
+  const nome = document.getElementById('cargoNome').value.trim();
+  if (!nome) { toast('Informe o nome do cargo.','error'); return; }
+  const list = JSON.parse(localStorage.getItem('gro_cargos_cad')||'[]');
+  if (!list.some(c => c.toLowerCase() === nome.toLowerCase())) {
+    list.push(nome); localStorage.setItem('gro_cargos_cad', JSON.stringify(list));
+  }
+  document.getElementById('mCargo').value = nome;
+  fecharModalCargo();
+  toast('Cargo cadastrado!','success');
+}
+
 function atualizarListaMedicos() {
   const dl = document.getElementById('medList');
   if (!dl) return;
@@ -545,7 +614,7 @@ function novoAg(hora) {
   document.getElementById('modalTitle').textContent = 'Agendar vaga';
   document.getElementById('mId').value = '';
   document.getElementById('mData').value = new Date(dataAtual()+'T12:00').toLocaleDateString('pt-BR');
-  ['mPaciente','mCpf','mEmpresa','mContabilidade','mMedico','mObs','novoProc'].forEach(id=>document.getElementById(id).value='');
+  ['mPaciente','mCpf','mEmpresa','mContabilidade','mCargo','mMedico','mObs','novoProc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mStatus').value = 'Agendado';
   fecharSuggs();
   document.getElementById('btnExcluir').style.display = 'none';
@@ -564,6 +633,7 @@ function editarAg(id) {
   document.getElementById('mCpf').value = a.cpf||'';
   document.getElementById('mEmpresa').value = a.empresa||'';
   document.getElementById('mContabilidade').value = a.contabilidade||'';
+  document.getElementById('mCargo').value = a.cargo||'';
   document.getElementById('mTipo').value = a.tipo||'';
   document.getElementById('mMedico').value = a.medico||'';
   document.getElementById('mObs').value = a.obs||'';
@@ -584,7 +654,7 @@ function fecharModal() {
 }
 
 function fecharSuggs() {
-  ['pacSugg','cpfSugg','medSugg','empSugg','contSugg'].forEach(id => {
+  ['pacSugg','cpfSugg','medSugg','empSugg','contSugg','cargoSugg'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
 }
@@ -604,6 +674,7 @@ function salvarAg() {
     paciente, cpf: document.getElementById('mCpf').value.trim(),
     empresa, tipo, procedimentos: procs,
     contabilidade: document.getElementById('mContabilidade').value.trim(),
+    cargo: document.getElementById('mCargo').value.trim(),
     medico: document.getElementById('mMedico').value.trim(),
     obs: document.getElementById('mObs').value.trim(),
     status: document.getElementById('mStatus').value,
@@ -867,6 +938,87 @@ function salvarConfig() {
   });
   fecharConfig(); renderAgenda();
   toast('Horários atualizados!', 'success');
+}
+
+// ---------- EXPORTAR PDF DO DIA ----------
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatarDataBR(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : iso; }
+
+function coletarAtendimentosDia(data) {
+  const pacientes = JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]');
+  const byCpf = {}, byNome = {};
+  pacientes.forEach(p => { if (p.cpf) byCpf[p.cpf]=p; if (p.nome) byNome[p.nome.toLowerCase()]=p; });
+  const nascDe = (nome,cpf) => {
+    const p = (cpf && byCpf[cpf]) || (nome && byNome[(nome||'').toLowerCase()]);
+    return (p && p.nasc) ? formatarDataBR(p.nasc) : '';
+  };
+  const res = [];
+  GRO_DB.getPorData(data).forEach(a => {
+    if (a.status === 'Cancelado') return;
+    res.push({ hora:a.hora||'', nome:a.paciente||'', cpf:a.cpf||'', nasc:nascDe(a.paciente,a.cpf), exames:(a.procedimentos||[]).join(', ') });
+  });
+  const localKeys = new Set(GRO_DB.getPorData(data).map(a=>`${a.empresa}|${a.paciente}`));
+  getExamesParaData(data).forEach(h => {
+    if (localKeys.has(`${h.empresa}|${h.paciente}`)) return;
+    res.push({ hora:'', nome:h.paciente||'', cpf:'', nasc:nascDe(h.paciente,''), exames:(h.procs||[]).join(', ') });
+  });
+  res.sort((a,b)=>(a.hora||'~').localeCompare(b.hora||'~'));
+  return res;
+}
+
+function exportarDiaPDF() {
+  const data = dataAtual();
+  const itens = coletarAtendimentosDia(data);
+  const dataFmt = new Date(data+'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const dataCap = dataFmt.charAt(0).toUpperCase()+dataFmt.slice(1);
+  const logoUrl = new URL('logo.png', location.href).href;
+  const linhas = itens.length ? itens.map((it,i)=>`
+    <tr>
+      <td class="c">${i+1}</td>
+      <td>${it.hora||'—'}</td>
+      <td><strong>${escapeHtml(it.nome)||'—'}</strong></td>
+      <td>${escapeHtml(it.cpf)||'—'}</td>
+      <td>${it.nasc||'—'}</td>
+      <td>${escapeHtml(it.exames)||'—'}</td>
+    </tr>`).join('') : `<tr><td colspan="6" class="vazio">Nenhum atendimento para este dia.</td></tr>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Atendimentos ${data}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1B392A;padding:28px}
+    .cab{display:flex;align-items:center;gap:16px;border-bottom:3px solid #3AB86A;padding-bottom:14px}
+    .cab img{height:58px}
+    .cab .marca{font-size:22px;font-weight:800;color:#1B392A;line-height:1}
+    .cab .sub{font-size:11px;color:#3AB86A;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+    .tit{margin:16px 0 4px;font-size:16px;font-weight:700}
+    .dia{font-size:13px;color:#555;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:#1a6e3c;color:#fff;text-align:left;padding:7px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+    td{padding:7px 8px;border-bottom:1px solid #d4e6da;vertical-align:top}
+    td.c{text-align:center;color:#7a9a82}
+    tr:nth-child(even) td{background:#f6faf7}
+    .vazio{text-align:center;color:#7a9a82;padding:24px}
+    .rod{margin-top:18px;font-size:10px;color:#9bb0a4;text-align:center;border-top:1px solid #e3efe8;padding-top:8px}
+    .barra{margin:16px 0;text-align:center}
+    .barra button{background:#1a6e3c;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
+    @media print{ body{padding:0} .noprint{display:none} }
+  </style></head><body>
+    <div class="cab">
+      <img src="${logoUrl}" alt="GRO Saúde" onerror="this.style.display='none'"/>
+      <div><div class="marca">GRO Saúde</div><div class="sub">Gestão de Segurança e Medicina Ocupacional</div></div>
+    </div>
+    <div class="tit">Atendimentos do dia</div>
+    <div class="dia">${dataCap} &nbsp;·&nbsp; Total de atendimentos: ${itens.length}</div>
+    <table>
+      <thead><tr><th>#</th><th>Horário</th><th>Nome do Funcionário</th><th>CPF</th><th>Data de Nascimento</th><th>Exames Realizados</th></tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>
+    <div class="rod">Documento gerado em ${new Date().toLocaleString('pt-BR')} — GRO Saúde</div>
+    <div class="barra noprint"><button onclick="window.print()">🖨 Imprimir / Salvar como PDF</button></div>
+    <scr`+`ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);};</scr`+`ipt>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permita pop-ups para exportar o PDF.','error'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 function toast(msg, tipo) {
