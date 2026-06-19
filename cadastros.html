@@ -45,6 +45,7 @@
               <option>Particular</option>
               <option>TeleMed</option>
               <option>TelePsic</option>
+              <option>Radiologia</option>
             </select>
           </div>
           <button type="submit" class="btn-primary" id="pBtn">+ Adicionar</button>
@@ -79,7 +80,7 @@
 
 <script src="nav.js"></script>
 <script>
-const CAT_COR = {'Ocupacional':'#16A94A','Laboratorial':'#f39c12','Toxicológico':'#9b59b6','Particular':'#2980b9','TeleMed':'#0891b2','TelePsic':'#db2777'};
+const CAT_COR = {'Ocupacional':'#16A94A','Laboratorial':'#f39c12','Toxicológico':'#9b59b6','Particular':'#2980b9','TeleMed':'#0891b2','TelePsic':'#db2777','Radiologia':'#475569'};
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (!GRO_AUTH.requireAdmin()) return;
