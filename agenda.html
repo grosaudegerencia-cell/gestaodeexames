@@ -445,10 +445,16 @@ function preencherHorarios(selected) {
 function atualizarListaEmpresas() {
   const dl = document.getElementById('empList');
   if (!dl) return;
+  // Nomes cadastrados como contabilidade não devem aparecer na lista de empresas
+  const contabils = new Set(
+    JSON.parse(localStorage.getItem('gro_empresas_full')||'[]')
+      .filter(e=>e.tipo==='contabilidade')
+      .map(e=>(e.nome||'').toLowerCase())
+  );
   const empresas = [...new Set([
     ...GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean),
     ...GRO_DB.getEmpresas()
-  ])].sort();
+  ])].filter(e=>!contabils.has(e.toLowerCase())).sort();
   dl.innerHTML = empresas.map(e=>`<option value="${e}">`).join('');
 }
 
@@ -698,7 +704,7 @@ function salvarNovaEmpresa() {
     email:   document.getElementById('empEmail').value.trim()
   };
   const list = JSON.parse(localStorage.getItem('gro_empresas_full')||'[]');
-  if (!list.some(e=>e.nome.toLowerCase()===nome.toLowerCase())) {
+  if (!list.some(e=>e.tipo!=='contabilidade' && e.nome.toLowerCase()===nome.toLowerCase())) {
     list.push(obj); localStorage.setItem('gro_empresas_full', JSON.stringify(list));
   }
   GRO_DB.addEmpresa(nome);
@@ -726,12 +732,10 @@ function salvarContabilidade() {
     tipo: 'contabilidade'
   };
   const list = JSON.parse(localStorage.getItem('gro_empresas_full')||'[]');
-  if (!list.some(e=>e.nome.toLowerCase()===nome.toLowerCase())) {
+  // Contabilidade é um cadastro separado de empresa — não alimenta a lista de empresas
+  if (!list.some(e=>e.tipo==='contabilidade' && e.nome.toLowerCase()===nome.toLowerCase())) {
     list.push(obj); localStorage.setItem('gro_empresas_full', JSON.stringify(list));
   }
-  GRO_DB.addEmpresa(nome);
-  document.getElementById('mEmpresa').value = nome;
-  atualizarListaEmpresas();
   fecharModalCont();
   toast('Contabilidade cadastrada!','success');
 }
