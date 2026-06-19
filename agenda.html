@@ -12,6 +12,7 @@
 <script src="sync.js"></script>
 <script src="db.js"></script>
 <script src="data.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="sistema.css"/>
 <style>
@@ -941,14 +942,13 @@ function salvarConfig() {
 }
 
 // ---------- EXPORTAR PDF DO DIA ----------
-function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function formatarDataBR(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : iso; }
 
-// Conjunto de nomes de exames marcados como Laboratorial nos cadastros
+// Conjunto de nomes de exames com categoria Laboratorial nos cadastros
 function nomesLaboratoriais() {
   return new Set(
     GRO_DB.getProcedimentos()
-      .filter(p => (p.complemento||'') === 'Laboratorial')
+      .filter(p => (p.categoria||'') === 'Laboratorial')
       .map(p => (p.nome||'').toLowerCase())
   );
 }
@@ -981,59 +981,105 @@ function coletarAtendimentosDia(data) {
   return res;
 }
 
-function exportarDiaPDF() {
+function carregarLogoDataURL() {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+          cv.getContext('2d').drawImage(img, 0, 0);
+          resolve({ url: cv.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+        } catch(e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = new URL('logo.png', location.href).href;
+    } catch(e) { resolve(null); }
+  });
+}
+
+async function exportarDiaPDF() {
   const data = dataAtual();
   const itens = coletarAtendimentosDia(data);
+  const dataBR = new Date(data+'T12:00').toLocaleDateString('pt-BR');
+  if (!itens.length) { toast('Não há atendimentos laboratoriais neste dia.', 'error'); return; }
+  // Aviso de confirmação antes de exportar
+  if (!confirm(`Exportar ${itens.length} atendimento(s) laboratorial(is) de ${dataBR} em PDF?`)) return;
+  if (!window.jspdf || !window.jspdf.jsPDF) { toast('Biblioteca de PDF indisponível.', 'error'); return; }
+
   const dataFmt = new Date(data+'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   const dataCap = dataFmt.charAt(0).toUpperCase()+dataFmt.slice(1);
-  const logoUrl = new URL('logo.png', location.href).href;
-  const linhas = itens.length ? itens.map((it,i)=>`
-    <tr>
-      <td class="c">${i+1}</td>
-      <td>${it.hora||'—'}</td>
-      <td><strong>${escapeHtml(it.nome)||'—'}</strong></td>
-      <td>${escapeHtml(it.cpf)||'—'}</td>
-      <td>${it.nasc||'—'}</td>
-      <td>${escapeHtml(it.exames)||'—'}</td>
-    </tr>`).join('') : `<tr><td colspan="6" class="vazio">Nenhum atendimento para este dia.</td></tr>`;
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Atendimentos laboratoriais ${data}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;color:#1B392A;padding:28px}
-    .cab{display:flex;align-items:center;gap:16px;border-bottom:3px solid #3AB86A;padding-bottom:14px}
-    .cab img{height:58px}
-    .cab .marca{font-size:22px;font-weight:800;color:#1B392A;line-height:1}
-    .cab .sub{font-size:11px;color:#3AB86A;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-top:3px}
-    .tit{margin:16px 0 4px;font-size:16px;font-weight:700}
-    .dia{font-size:13px;color:#555;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#1a6e3c;color:#fff;text-align:left;padding:7px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
-    td{padding:7px 8px;border-bottom:1px solid #d4e6da;vertical-align:top}
-    td.c{text-align:center;color:#7a9a82}
-    tr:nth-child(even) td{background:#f6faf7}
-    .vazio{text-align:center;color:#7a9a82;padding:24px}
-    .rod{margin-top:18px;font-size:10px;color:#9bb0a4;text-align:center;border-top:1px solid #e3efe8;padding-top:8px}
-    .barra{margin:16px 0;text-align:center}
-    .barra button{background:#1a6e3c;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
-    @media print{ body{padding:0} .noprint{display:none} }
-  </style></head><body>
-    <div class="cab">
-      <img src="${logoUrl}" alt="GRO Saúde" onerror="this.style.display='none'"/>
-      <div><div class="marca">GRO Saúde</div><div class="sub">Gestão de Segurança e Medicina Ocupacional</div></div>
-    </div>
-    <div class="tit">Atendimentos laboratoriais do dia</div>
-    <div class="dia">${dataCap} &nbsp;·&nbsp; Total de atendimentos: ${itens.length}</div>
-    <table>
-      <thead><tr><th>#</th><th>Horário</th><th>Nome do Funcionário</th><th>CPF</th><th>Data de Nascimento</th><th>Exames Laboratoriais</th></tr></thead>
-      <tbody>${linhas}</tbody>
-    </table>
-    <div class="rod">Documento gerado em ${new Date().toLocaleString('pt-BR')} — GRO Saúde</div>
-    <div class="barra noprint"><button onclick="window.print()">🖨 Imprimir / Salvar como PDF</button></div>
-    <scr`+`ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);};</scr`+`ipt>
-  </body></html>`;
-  const w = window.open('', '_blank');
-  if (!w) { toast('Permita pop-ups para exportar o PDF.','error'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  let y = margin;
+
+  // Cabeçalho com logo + identidade
+  const logo = await carregarLogoDataURL();
+  let textX = margin;
+  if (logo && logo.w && logo.h) {
+    const lh = 42, lw = (logo.w/logo.h)*lh;
+    try { doc.addImage(logo.url, 'PNG', margin, y, lw, lh); textX = margin + lw + 14; } catch(e) { textX = margin; }
+  }
+  doc.setTextColor('#1B392A'); doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('GRO Saúde', textX, y+20);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor('#3AB86A');
+  doc.text('GESTÃO DE SEGURANÇA E MEDICINA OCUPACIONAL', textX, y+33);
+  y += 54;
+  doc.setDrawColor('#3AB86A'); doc.setLineWidth(2); doc.line(margin, y, pageW-margin, y);
+  y += 22;
+
+  // Título + data do dia
+  doc.setTextColor('#1B392A'); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('Atendimentos laboratoriais do dia', margin, y); y += 16;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor('#555');
+  doc.text(`${dataCap}  ·  Total de atendimentos: ${itens.length}`, margin, y); y += 14;
+
+  // Colunas
+  const cols = [
+    { t:'#',                    x: margin,        w: 22 },
+    { t:'Horário',              x: margin+22,     w: 48 },
+    { t:'Nome do Funcionário',  x: margin+70,     w: 150 },
+    { t:'CPF',                  x: margin+220,    w: 92 },
+    { t:'Data Nasc.',           x: margin+312,    w: 66 },
+    { t:'Exames Laboratoriais', x: margin+378,    w: pageW-margin-(margin+378) },
+  ];
+  function desenharHeader() {
+    doc.setFillColor('#1a6e3c'); doc.rect(margin, y, pageW-2*margin, 20, 'F');
+    doc.setTextColor('#ffffff'); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    cols.forEach(c => doc.text(c.t.toUpperCase(), c.x+4, y+13));
+    y += 20;
+  }
+  desenharHeader();
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  itens.forEach((it,i) => {
+    const nomeLines   = doc.splitTextToSize(it.nome||'—', cols[2].w-8);
+    const examesLines = doc.splitTextToSize(it.exames||'—', cols[5].w-8);
+    const rowH = Math.max(18, Math.max(nomeLines.length, examesLines.length)*11 + 7);
+    if (y + rowH > pageH - margin - 16) { doc.addPage(); y = margin; desenharHeader(); doc.setFont('helvetica','normal'); doc.setFontSize(9); }
+    if (i%2===1) { doc.setFillColor('#f6faf7'); doc.rect(margin, y, pageW-2*margin, rowH, 'F'); }
+    doc.setTextColor('#1B392A');
+    doc.text(String(i+1), cols[0].x+4, y+12);
+    doc.text(it.hora||'—', cols[1].x+4, y+12);
+    doc.text(nomeLines, cols[2].x+4, y+12);
+    doc.text(it.cpf||'—', cols[3].x+4, y+12);
+    doc.text(it.nasc||'—', cols[4].x+4, y+12);
+    doc.text(examesLines, cols[5].x+4, y+12);
+    doc.setDrawColor('#d4e6da'); doc.setLineWidth(0.5); doc.line(margin, y+rowH, pageW-margin, y+rowH);
+    y += rowH;
+  });
+
+  // Rodapé
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor('#9bb0a4');
+  doc.text(`Documento gerado em ${new Date().toLocaleString('pt-BR')} — GRO Saúde`, pageW/2, pageH-20, { align:'center' });
+
+  doc.save(`atendimentos-laboratoriais-${data}.pdf`);
+  toast('PDF exportado!', 'success');
 }
 
 function toast(msg, tipo) {

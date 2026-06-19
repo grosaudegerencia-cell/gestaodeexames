@@ -18,7 +18,6 @@
 .btn-edit-sm{width:24px;height:24px;border:1.5px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:.78rem;line-height:1;cursor:pointer}
 .btn-edit-sm:hover{background:#eff6ff}
 .cad-item.editando{border-color:#93c5fd;background:#eff6ff}
-.cad-comp{font-size:.66rem;font-weight:700;padding:.15rem .5rem;border-radius:20px;background:#eef2ff;color:#4338ca}
 .btn-secondary{height:38px;padding:0 1rem;background:#fff;border:1.5px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
 </style>
 </head>
@@ -40,15 +39,10 @@
           <div class="mfield grow"><label>Nome do exame *</label><input type="text" id="pNome" placeholder="Ex: Audiometria Tonal" required/></div>
           <div class="mfield"><label>Categoria</label>
             <select id="pCat">
-              <option>Clínico</option><option>Laboratorial</option>
-              <option>Imagem/Funcional</option><option>Toxicológico</option><option>Outros</option>
-            </select>
-          </div>
-          <div class="mfield"><label>Complemento</label>
-            <select id="pComp">
-              <option value="Ocupacional">Ocupacional</option>
-              <option value="Laboratorial">Laboratorial</option>
-              <option value="Toxicológico">Toxicológico</option>
+              <option>Ocupacional</option>
+              <option>Laboratorial</option>
+              <option>Toxicológico</option>
+              <option>Particular</option>
             </select>
           </div>
           <button type="submit" class="btn-primary" id="pBtn">+ Adicionar</button>
@@ -83,7 +77,7 @@
 
 <script src="nav.js"></script>
 <script>
-const CAT_COR = {'Clínico':'#16A94A','Laboratorial':'#f39c12','Imagem/Funcional':'#2980b9','Toxicológico':'#9b59b6','Outros':'#7f8c8d'};
+const CAT_COR = {'Ocupacional':'#16A94A','Laboratorial':'#f39c12','Toxicológico':'#9b59b6','Particular':'#2980b9'};
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (!GRO_AUTH.requireAdmin()) return;
@@ -96,14 +90,13 @@ function addProc(e) {
   e.preventDefault();
   const nome = document.getElementById('pNome').value;
   const cat  = document.getElementById('pCat').value;
-  const comp = document.getElementById('pComp').value;
   let r;
   if (editProcNome !== null) {
-    r = GRO_DB.updateProcedimento(editProcNome, { nome, categoria:cat, complemento:comp });
+    r = GRO_DB.updateProcedimento(editProcNome, { nome, categoria:cat });
     if (r.ok) { cancelProc(); renderProcs(); toast('Exame atualizado!', 'success'); }
     else toast(r.msg, 'error');
   } else {
-    r = GRO_DB.addProcedimento(nome, cat, comp);
+    r = GRO_DB.addProcedimento(nome, cat);
     if (r.ok) { cancelProc(); renderProcs(); toast('Exame cadastrado!', 'success'); }
     else toast(r.msg, 'error');
   }
@@ -112,8 +105,7 @@ function editProc(nome) {
   const p = GRO_DB.getProcedimentos().find(x=>x.nome===nome);
   if (!p) return;
   document.getElementById('pNome').value = p.nome;
-  document.getElementById('pCat').value  = p.categoria || 'Outros';
-  document.getElementById('pComp').value = p.complemento || 'Ocupacional';
+  document.getElementById('pCat').value  = CAT_COR[p.categoria] ? p.categoria : 'Ocupacional';
   editProcNome = nome;
   document.getElementById('pBtn').textContent = 'Salvar';
   document.getElementById('pCancel').style.display = '';
@@ -141,7 +133,6 @@ function renderProcs() {
     const esc = (p.nome||'').replace(/'/g,"\\'");
     return `<div class="cad-item${editProcNome===p.nome?' editando':''}">
       <span class="cad-item-name">${p.nome}</span>
-      ${p.complemento?`<span class="cad-comp">${p.complemento}</span>`:''}
       <span class="cad-cat" style="background:${c}1a;color:${c}">${p.categoria}</span>
       <span class="cad-item-acoes">
         <button class="btn-edit-sm" onclick="editProc('${esc}')" title="Editar">✎</button>
