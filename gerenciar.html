@@ -17,6 +17,11 @@
 .cad-form .mfield{min-width:120px}
 .cad-item-name small{display:block;font-weight:500;color:var(--text-muted);font-size:.72rem;margin-top:.1rem}
 .cad-cat.cad-doc{background:#eef6ff;color:#1d4ed8}
+.cad-item-acoes{display:flex;gap:.35rem;align-items:center}
+.btn-edit-sm{width:24px;height:24px;border:1.5px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:.78rem;line-height:1;cursor:pointer}
+.btn-edit-sm:hover{background:#eff6ff}
+.cad-item.editando{border-color:#93c5fd;background:#eff6ff}
+.btn-cancel-edit{height:38px;padding:0 1rem;background:#fff;border:1.5px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:.82rem;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body class="sys-body">
@@ -36,7 +41,8 @@
         <form onsubmit="addMedico(event)" class="cad-form">
           <div class="mfield grow"><label>Nome do médico *</label><input type="text" id="medNome" placeholder="Dr. Nome Sobrenome" required/></div>
           <div class="mfield"><label>CRM</label><input type="text" id="medCrm" placeholder="CRM/SP 12345"/></div>
-          <button type="submit" class="btn-primary">+ Adicionar</button>
+          <button type="submit" class="btn-primary" id="medBtn">+ Adicionar</button>
+          <button type="button" class="btn-cancel-edit" id="medCancel" onclick="cancelMed()" style="display:none">Cancelar</button>
         </form>
         <div class="cad-count" id="medCount"></div>
         <div class="cad-list" id="medList"></div>
@@ -54,7 +60,8 @@
           <div class="mfield grow"><label>Empresa *</label><input type="text" id="empNome" placeholder="Razão social / nome fantasia" required/></div>
           <div class="mfield"><label>CNPJ</label><input type="text" id="empCnpj" placeholder="00.000.000/0001-00"/></div>
           <div class="mfield"><label>Contato</label><input type="text" id="empContato" placeholder="Responsável / telefone"/></div>
-          <button type="submit" class="btn-primary">+ Adicionar</button>
+          <button type="submit" class="btn-primary" id="empBtn">+ Adicionar</button>
+          <button type="button" class="btn-cancel-edit" id="empCancel" onclick="cancelEmp()" style="display:none">Cancelar</button>
         </form>
         <div class="cad-count" id="empCount"></div>
         <div class="cad-list" id="empListBox"></div>
@@ -72,7 +79,8 @@
           <div class="mfield grow"><label>Contabilidade *</label><input type="text" id="contNome" placeholder="Ex: XYZ Contabilidade Ltda" required/></div>
           <div class="mfield"><label>Cidade</label><input type="text" id="contCidade" placeholder="Cidade"/></div>
           <div class="mfield"><label>Contato</label><input type="text" id="contContato" placeholder="Nome / telefone"/></div>
-          <button type="submit" class="btn-primary">+ Adicionar</button>
+          <button type="submit" class="btn-primary" id="contBtn">+ Adicionar</button>
+          <button type="button" class="btn-cancel-edit" id="contCancel" onclick="cancelCont()" style="display:none">Cancelar</button>
         </form>
         <div class="cad-count" id="contCount"></div>
         <div class="cad-list" id="contList"></div>
@@ -90,7 +98,8 @@
           <div class="mfield grow"><label>Nome *</label><input type="text" id="pacNome" placeholder="Nome completo" required/></div>
           <div class="mfield"><label>CPF</label><input type="text" id="pacCpf" placeholder="000.000.000-00"/></div>
           <div class="mfield"><label>Empresa</label><input type="text" id="pacEmpresa" list="empDatalist" placeholder="Empresa"/><datalist id="empDatalist"></datalist></div>
-          <button type="submit" class="btn-primary">+ Adicionar</button>
+          <button type="submit" class="btn-primary" id="pacBtn">+ Adicionar</button>
+          <button type="button" class="btn-cancel-edit" id="pacCancel" onclick="cancelPac()" style="display:none">Cancelar</button>
         </form>
         <div class="cad-count" id="pacCount"></div>
         <div class="cad-list" id="pacList"></div>
@@ -124,49 +133,109 @@ document.addEventListener('DOMContentLoaded', async () => {
 function renderTudo(){ renderMed(); renderEmp(); renderCont(); renderPac(); atualizarDatalistEmp(); }
 
 // ---------- MÉDICOS ----------
+let editMed = null;
 function addMedico(e){
   e.preventDefault();
   const nome = document.getElementById('medNome').value.trim();
   if (!nome) return;
   const crm = document.getElementById('medCrm').value.trim();
-  const list = Store.get(KEY_MED);
-  if (list.some(m=>m.nome.toLowerCase()===nome.toLowerCase())) { toast('Esse médico já está cadastrado.','error'); return; }
-  list.push({ nome, crm }); Store.set(KEY_MED, list);
+  let list = Store.get(KEY_MED);
+  const dup = list.some(m=>m.nome.toLowerCase()===nome.toLowerCase() && m.nome!==editMed);
+  if (dup) { toast('Esse médico já está cadastrado.','error'); return; }
+  if (editMed !== null) {
+    list = list.map(m=> m.nome===editMed ? { nome, crm } : m);
+    toast('Médico atualizado!','success');
+  } else {
+    list.push({ nome, crm });
+    toast('Médico cadastrado!','success');
+  }
+  Store.set(KEY_MED, list);
+  cancelMed();
+  renderMed();
+}
+function editMedico(nome){
+  const m = Store.get(KEY_MED).find(x=>x.nome===nome); if(!m) return;
+  document.getElementById('medNome').value = m.nome;
+  document.getElementById('medCrm').value = m.crm||'';
+  editMed = nome;
+  document.getElementById('medBtn').textContent = 'Salvar';
+  document.getElementById('medCancel').style.display = '';
+  document.getElementById('medNome').focus();
+  renderMed();
+}
+function cancelMed(){
+  editMed = null;
   document.getElementById('medNome').value=''; document.getElementById('medCrm').value='';
-  renderMed(); toast('Médico cadastrado!','success');
+  document.getElementById('medBtn').textContent = '+ Adicionar';
+  document.getElementById('medCancel').style.display = 'none';
+  renderMed();
 }
 function delMedico(nome){
   if (!confirm(`Remover o médico "${nome}"?`)) return;
   Store.set(KEY_MED, Store.get(KEY_MED).filter(m=>m.nome!==nome));
+  if (editMed===nome) cancelMed();
   renderMed(); toast('Médico removido.','success');
 }
 function renderMed(){
   const list = Store.get(KEY_MED);
   document.getElementById('medCount').textContent = `${list.length} médico(s) cadastrado(s)`;
   document.getElementById('medList').innerHTML = list.map(m=>`
-    <div class="cad-item">
+    <div class="cad-item${editMed===m.nome?' editando':''}">
       <span class="cad-item-name">${m.nome}${m.crm?`<small>${m.crm}</small>`:''}</span>
-      <button class="btn-del-sm" onclick="delMedico('${esc(m.nome)}')">×</button>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editMedico('${esc(m.nome)}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delMedico('${esc(m.nome)}')" title="Excluir">×</button>
+      </span>
     </div>`).join('');
 }
 
 // ---------- EMPRESAS (gro_empresas_full sem tipo contabilidade) ----------
+let editEmp = null;
 function addEmpresa(e){
   e.preventDefault();
   const nome = document.getElementById('empNome').value.trim();
   if (!nome) return;
-  const list = Store.get(KEY_EMP);
-  if (list.some(x=>x.tipo!=='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase())) { toast('Essa empresa já está cadastrada.','error'); return; }
-  list.push({ nome, cnpj:document.getElementById('empCnpj').value.trim(), contato:document.getElementById('empContato').value.trim() });
-  Store.set(KEY_EMP, list);
-  GRO_DB.addEmpresa(nome);
+  const cnpj = document.getElementById('empCnpj').value.trim();
+  const contato = document.getElementById('empContato').value.trim();
+  let list = Store.get(KEY_EMP);
+  const dup = list.some(x=>x.tipo!=='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase() && x.nome!==editEmp);
+  if (dup) { toast('Essa empresa já está cadastrada.','error'); return; }
+  if (editEmp !== null) {
+    list = list.map(x=> (x.tipo!=='contabilidade' && x.nome===editEmp) ? { ...x, nome, cnpj, contato } : x);
+    Store.set(KEY_EMP, list);
+    if (nome!==editEmp) { GRO_DB.removeEmpresa(editEmp); GRO_DB.addEmpresa(nome); }
+    toast('Empresa atualizada!','success');
+  } else {
+    list.push({ nome, cnpj, contato });
+    Store.set(KEY_EMP, list);
+    GRO_DB.addEmpresa(nome);
+    toast('Empresa cadastrada!','success');
+  }
+  cancelEmp(); renderEmp(); atualizarDatalistEmp();
+}
+function editEmpresa(nome){
+  const x = Store.get(KEY_EMP).find(e=>e.tipo!=='contabilidade' && e.nome===nome); if(!x) return;
+  document.getElementById('empNome').value = x.nome;
+  document.getElementById('empCnpj').value = x.cnpj||'';
+  document.getElementById('empContato').value = x.contato||'';
+  editEmp = nome;
+  document.getElementById('empBtn').textContent = 'Salvar';
+  document.getElementById('empCancel').style.display = '';
+  document.getElementById('empNome').focus();
+  renderEmp();
+}
+function cancelEmp(){
+  editEmp = null;
   ['empNome','empCnpj','empContato'].forEach(id=>document.getElementById(id).value='');
-  renderEmp(); atualizarDatalistEmp(); toast('Empresa cadastrada!','success');
+  document.getElementById('empBtn').textContent = '+ Adicionar';
+  document.getElementById('empCancel').style.display = 'none';
+  renderEmp();
 }
 function delEmpresa(nome){
   if (!confirm(`Remover a empresa "${nome}"?`)) return;
   Store.set(KEY_EMP, Store.get(KEY_EMP).filter(x=>!(x.tipo!=='contabilidade' && x.nome===nome)));
   GRO_DB.removeEmpresa(nome);
+  if (editEmp===nome) cancelEmp();
   renderEmp(); atualizarDatalistEmp(); toast('Empresa removida.','success');
 }
 function renderEmp(){
@@ -174,28 +243,59 @@ function renderEmp(){
   document.getElementById('empCount').textContent = `${list.length} empresa(s) cadastrada(s)`;
   document.getElementById('empListBox').innerHTML = list.map(x=>{
     const sub = [x.cnpj, x.contato].filter(Boolean).join(' · ');
-    return `<div class="cad-item">
+    return `<div class="cad-item${editEmp===x.nome?' editando':''}">
       <span class="cad-item-name">${x.nome}${sub?`<small>${sub}</small>`:''}</span>
-      <button class="btn-del-sm" onclick="delEmpresa('${esc(x.nome)}')">×</button>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editEmpresa('${esc(x.nome)}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delEmpresa('${esc(x.nome)}')" title="Excluir">×</button>
+      </span>
     </div>`;
   }).join('');
 }
 
 // ---------- CONTABILIDADE (gro_empresas_full com tipo contabilidade) ----------
+let editCont = null;
 function addCont(e){
   e.preventDefault();
   const nome = document.getElementById('contNome').value.trim();
   if (!nome) return;
-  const list = Store.get(KEY_EMP);
-  if (list.some(x=>x.tipo==='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase())) { toast('Essa contabilidade já está cadastrada.','error'); return; }
-  list.push({ nome, cidade:document.getElementById('contCidade').value.trim(), contato:document.getElementById('contContato').value.trim(), tipo:'contabilidade' });
+  const cidade = document.getElementById('contCidade').value.trim();
+  const contato = document.getElementById('contContato').value.trim();
+  let list = Store.get(KEY_EMP);
+  const dup = list.some(x=>x.tipo==='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase() && x.nome!==editCont);
+  if (dup) { toast('Essa contabilidade já está cadastrada.','error'); return; }
+  if (editCont !== null) {
+    list = list.map(x=> (x.tipo==='contabilidade' && x.nome===editCont) ? { ...x, nome, cidade, contato } : x);
+    toast('Contabilidade atualizada!','success');
+  } else {
+    list.push({ nome, cidade, contato, tipo:'contabilidade' });
+    toast('Contabilidade cadastrada!','success');
+  }
   Store.set(KEY_EMP, list);
+  cancelCont(); renderCont();
+}
+function editContab(nome){
+  const x = Store.get(KEY_EMP).find(e=>e.tipo==='contabilidade' && e.nome===nome); if(!x) return;
+  document.getElementById('contNome').value = x.nome;
+  document.getElementById('contCidade').value = x.cidade||'';
+  document.getElementById('contContato').value = x.contato||'';
+  editCont = nome;
+  document.getElementById('contBtn').textContent = 'Salvar';
+  document.getElementById('contCancel').style.display = '';
+  document.getElementById('contNome').focus();
+  renderCont();
+}
+function cancelCont(){
+  editCont = null;
   ['contNome','contCidade','contContato'].forEach(id=>document.getElementById(id).value='');
-  renderCont(); toast('Contabilidade cadastrada!','success');
+  document.getElementById('contBtn').textContent = '+ Adicionar';
+  document.getElementById('contCancel').style.display = 'none';
+  renderCont();
 }
 function delCont(nome){
   if (!confirm(`Remover a contabilidade "${nome}"?`)) return;
   Store.set(KEY_EMP, Store.get(KEY_EMP).filter(x=>!(x.tipo==='contabilidade' && x.nome===nome)));
+  if (editCont===nome) cancelCont();
   renderCont(); toast('Contabilidade removida.','success');
 }
 function renderCont(){
@@ -203,29 +303,60 @@ function renderCont(){
   document.getElementById('contCount').textContent = `${list.length} contabilidade(s) cadastrada(s)`;
   document.getElementById('contList').innerHTML = list.map(x=>{
     const sub = [x.cidade, x.contato].filter(Boolean).join(' · ');
-    return `<div class="cad-item">
+    return `<div class="cad-item${editCont===x.nome?' editando':''}">
       <span class="cad-item-name">${x.nome}${sub?`<small>${sub}</small>`:''}</span>
-      <button class="btn-del-sm" onclick="delCont('${esc(x.nome)}')">×</button>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editContab('${esc(x.nome)}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delCont('${esc(x.nome)}')" title="Excluir">×</button>
+      </span>
     </div>`;
   }).join('');
 }
 
 // ---------- FUNCIONÁRIOS / PACIENTES ----------
+let editPac = null; // {nome, cpf} original
 function addPac(e){
   e.preventDefault();
   const nome = document.getElementById('pacNome').value.trim();
   if (!nome) return;
   const cpf = document.getElementById('pacCpf').value.trim();
-  const list = Store.get(KEY_PAC);
-  if (list.some(p=>p.nome.toLowerCase()===nome.toLowerCase() && (p.cpf||'')===cpf)) { toast('Esse funcionário já está cadastrado.','error'); return; }
-  list.push({ nome, cpf, empresa:document.getElementById('pacEmpresa').value.trim() });
+  const empresa = document.getElementById('pacEmpresa').value.trim();
+  let list = Store.get(KEY_PAC);
+  const dup = list.some(p=>p.nome.toLowerCase()===nome.toLowerCase() && (p.cpf||'')===cpf &&
+    !(editPac && p.nome===editPac.nome && (p.cpf||'')===editPac.cpf));
+  if (dup) { toast('Esse funcionário já está cadastrado.','error'); return; }
+  if (editPac !== null) {
+    list = list.map(p=> (p.nome===editPac.nome && (p.cpf||'')===editPac.cpf) ? { ...p, nome, cpf, empresa } : p);
+    toast('Funcionário atualizado!','success');
+  } else {
+    list.push({ nome, cpf, empresa });
+    toast('Funcionário cadastrado!','success');
+  }
   Store.set(KEY_PAC, list);
+  cancelPac(); renderPac();
+}
+function editPaciente(nome, cpf){
+  const p = Store.get(KEY_PAC).find(x=>x.nome===nome && (x.cpf||'')===cpf); if(!p) return;
+  document.getElementById('pacNome').value = p.nome;
+  document.getElementById('pacCpf').value = p.cpf||'';
+  document.getElementById('pacEmpresa').value = p.empresa||'';
+  editPac = { nome, cpf };
+  document.getElementById('pacBtn').textContent = 'Salvar';
+  document.getElementById('pacCancel').style.display = '';
+  document.getElementById('pacNome').focus();
+  renderPac();
+}
+function cancelPac(){
+  editPac = null;
   ['pacNome','pacCpf','pacEmpresa'].forEach(id=>document.getElementById(id).value='');
-  renderPac(); toast('Funcionário cadastrado!','success');
+  document.getElementById('pacBtn').textContent = '+ Adicionar';
+  document.getElementById('pacCancel').style.display = 'none';
+  renderPac();
 }
 function delPac(nome, cpf){
   if (!confirm(`Remover o funcionário "${nome}"?`)) return;
   Store.set(KEY_PAC, Store.get(KEY_PAC).filter(p=>!(p.nome===nome && (p.cpf||'')===cpf)));
+  if (editPac && editPac.nome===nome && editPac.cpf===cpf) cancelPac();
   renderPac(); toast('Funcionário removido.','success');
 }
 function renderPac(){
@@ -233,9 +364,13 @@ function renderPac(){
   document.getElementById('pacCount').textContent = `${list.length} funcionário(s) cadastrado(s)`;
   document.getElementById('pacList').innerHTML = list.map(p=>{
     const sub = [p.cpf, p.empresa].filter(Boolean).join(' · ');
-    return `<div class="cad-item">
+    const isEd = editPac && editPac.nome===p.nome && editPac.cpf===(p.cpf||'');
+    return `<div class="cad-item${isEd?' editando':''}">
       <span class="cad-item-name">${p.nome}${sub?`<small>${sub}</small>`:''}</span>
-      <button class="btn-del-sm" onclick="delPac('${esc(p.nome)}','${esc(p.cpf)}')">×</button>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editPaciente('${esc(p.nome)}','${esc(p.cpf)}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delPac('${esc(p.nome)}','${esc(p.cpf)}')" title="Excluir">×</button>
+      </span>
     </div>`;
   }).join('');
 }
