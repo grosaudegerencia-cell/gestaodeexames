@@ -85,12 +85,17 @@
         </div>
       </div>
 
-      <!-- Paciente (busca por nome) + CPF (busca por CPF) -->
+      <!-- Paciente (busca por nome + botão Novo) + CPF (busca por CPF) -->
       <div class="mrow">
-        <div class="mfield grow mfield-rel">
+        <div class="mfield grow">
           <label>Paciente / Colaborador *</label>
-          <input type="text" id="mPaciente" placeholder="Buscar por nome..." oninput="buscarPaciente()" autocomplete="off"/>
-          <div id="pacSugg" class="sugg-list" style="display:none"></div>
+          <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
+            <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
+              <input type="text" id="mPaciente" placeholder="Buscar por nome..." oninput="buscarPaciente()" autocomplete="off" style="width:100%"/>
+              <div id="pacSugg" class="sugg-list" style="display:none"></div>
+            </div>
+            <button type="button" class="btn-mini btn-mini-add" onclick="novoPacienteModal()" title="Cadastrar novo paciente">+ Novo</button>
+          </div>
         </div>
         <div class="mfield mfield-rel"><label>CPF</label>
           <input type="text" id="mCpf" placeholder="Buscar por CPF..." oninput="buscarPorCpf()" autocomplete="off"/>
@@ -205,6 +210,27 @@
       <div style="flex:1"></div>
       <button class="btn-secondary" onclick="fecharModalCont()">Cancelar</button>
       <button class="btn-primary" onclick="salvarContabilidade()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-MODAL: Novo Paciente -->
+<div class="modal-overlay" id="modalPac">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-head"><h3>Cadastrar Paciente</h3><button class="modal-x" onclick="fecharModalPac()">×</button></div>
+    <div class="modal-body">
+      <div class="mfield"><label>Nome do Paciente *</label><input type="text" id="pacNome" placeholder="Nome completo"/></div>
+      <div class="mfield"><label>CPF</label><input type="text" id="pacCpf" placeholder="000.000.000-00"/></div>
+      <div class="mfield"><label>Empresa</label><input type="text" id="pacEmpresa" list="empList" placeholder="Empresa"/></div>
+      <div class="mrow">
+        <div class="mfield"><label>Telefone</label><input type="text" id="pacTel" placeholder="(00) 00000-0000"/></div>
+        <div class="mfield"><label>Data de nascimento</label><input type="date" id="pacNasc"/></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-secondary" onclick="fecharModalPac()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarNovoPaciente()">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -526,28 +552,41 @@ function excluirAg() {
   fecharModal(); renderAgenda();
 }
 
+// ---------- BASE DE PACIENTES (histórico + cadastrados) ----------
+function listaPacientes() {
+  const map = {};
+  GRO_DB.getAgendamentos().forEach(a => {
+    if (!a.paciente) return;
+    const k = a.paciente + '|' + (a.cpf||'');
+    if (!map[k]) map[k] = { nome:a.paciente, cpf:a.cpf||'' };
+  });
+  JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]').forEach(p => {
+    if (!p || !p.nome) return;
+    const k = p.nome + '|' + (p.cpf||'');
+    if (!map[k]) map[k] = { nome:p.nome, cpf:p.cpf||'' };
+  });
+  return Object.values(map);
+}
+
+const btnNovoPacSugg = '<div class="sugg-item" onclick="novoPacienteModal()" style="color:#1a6e3c;font-weight:600">➕ Cadastrar novo paciente</div>';
+
 // ---------- AUTOCOMPLETE PACIENTE (por nome) ----------
 function buscarPaciente() {
   const q = (document.getElementById('mPaciente').value || '').trim().toLowerCase();
   const sugg = document.getElementById('pacSugg');
   if (q.length < 2) { sugg.style.display='none'; return; }
-  const seen = new Set();
-  const results = [];
-  GRO_DB.getAgendamentos().forEach(a => {
-    if (!a.paciente) return;
-    const key = a.paciente + '|' + (a.cpf||'');
-    if (seen.has(key)) return;
-    if (a.paciente.toLowerCase().includes(q)) {
-      seen.add(key);
-      results.push({ nome: a.paciente, cpf: a.cpf||'' });
-    }
-  });
-  if (!results.length) { sugg.style.display='none'; return; }
+  const results = listaPacientes().filter(r => r.nome.toLowerCase().includes(q));
+  if (!results.length) {
+    // Nome não cadastrado → oferece botão para cadastrar
+    sugg.innerHTML = btnNovoPacSugg;
+    sugg.style.display = 'block';
+    return;
+  }
   sugg.innerHTML = results.slice(0,8).map(r => {
     const ne = r.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const ce = r.cpf.replace(/'/g,"\\'");
     return `<div class="sugg-item" onclick="selecionarPaciente('${ne}','${ce}')"><strong>${r.nome}</strong>${r.cpf?'<small>CPF: '+r.cpf+'</small>':''}</div>`;
-  }).join('');
+  }).join('') + btnNovoPacSugg;
   sugg.style.display = 'block';
 }
 
@@ -556,17 +595,7 @@ function buscarPorCpf() {
   const q = (document.getElementById('mCpf').value || '').trim().toLowerCase();
   const sugg = document.getElementById('cpfSugg');
   if (q.length < 2) { sugg.style.display='none'; return; }
-  const seen = new Set();
-  const results = [];
-  GRO_DB.getAgendamentos().forEach(a => {
-    if (!a.cpf) return;
-    const key = (a.paciente||'') + '|' + a.cpf;
-    if (seen.has(key)) return;
-    if ((a.cpf||'').toLowerCase().includes(q)) {
-      seen.add(key);
-      results.push({ nome: a.paciente||'', cpf: a.cpf });
-    }
-  });
+  const results = listaPacientes().filter(r => r.cpf && r.cpf.toLowerCase().includes(q));
   if (!results.length) { sugg.style.display='none'; return; }
   sugg.innerHTML = results.slice(0,8).map(r => {
     const ne = (r.nome||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -580,6 +609,39 @@ function selecionarPaciente(nome, cpf) {
   document.getElementById('mPaciente').value = nome;
   document.getElementById('mCpf').value = cpf;
   fecharSuggs();
+}
+
+// ---------- NOVO PACIENTE ----------
+function novoPacienteModal() {
+  ['pacNome','pacCpf','pacEmpresa','pacTel','pacNasc'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  // Aproveita o que já foi digitado no formulário
+  document.getElementById('pacNome').value = document.getElementById('mPaciente').value.trim();
+  document.getElementById('pacCpf').value  = document.getElementById('mCpf').value.trim();
+  fecharSuggs();
+  document.getElementById('modalPac').classList.add('show');
+}
+function fecharModalPac() { document.getElementById('modalPac').classList.remove('show'); }
+function salvarNovoPaciente() {
+  const nome = document.getElementById('pacNome').value.trim();
+  if (!nome) { toast('Informe o nome do paciente.','error'); return; }
+  const obj = {
+    nome,
+    cpf:     document.getElementById('pacCpf').value.trim(),
+    empresa: document.getElementById('pacEmpresa').value.trim(),
+    tel:     document.getElementById('pacTel').value.trim(),
+    nasc:    document.getElementById('pacNasc').value
+  };
+  const list = JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]');
+  if (!list.some(p => p.nome.toLowerCase()===nome.toLowerCase() && (p.cpf||'')===(obj.cpf||''))) {
+    list.push(obj); localStorage.setItem('gro_pacientes_cad', JSON.stringify(list));
+  }
+  document.getElementById('mPaciente').value = nome;
+  if (obj.cpf)     document.getElementById('mCpf').value = obj.cpf;
+  if (obj.empresa) document.getElementById('mEmpresa').value = obj.empresa;
+  fecharModalPac();
+  toast('Paciente cadastrado!','success');
 }
 
 // ---------- LISTA DE MÉDICOS (escolher cadastrados) ----------
