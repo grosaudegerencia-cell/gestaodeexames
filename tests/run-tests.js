@@ -202,11 +202,11 @@ async function main() {
     await page._ctx.close();
   });
 
-  await test('Login como admin (gro@2026) redireciona para index', async () => {
+  await test('Login como admin (gro@2026) redireciona para agenda', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
-    assert(page.url().includes('index.html'), 'na página index');
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
+    assert(page.url().includes('agenda.html'), 'na página agenda');
     await page._ctx.close();
   });
 
@@ -245,7 +245,7 @@ async function main() {
     await page._ctx.close();
   });
 
-  await test('Troca de senha com sucesso redireciona para index', async () => {
+  await test('Troca de senha com sucesso redireciona para agenda', async () => {
     const page = await newPage();
     await loginAs(page, 'marianas', 'gro2026');
     await page.waitForURL(/trocar-senha\.html/, { timeout: 6000 });
@@ -254,8 +254,8 @@ async function main() {
     await page.fill('#nova', 'novaSenha123');
     await page.fill('#conf', 'novaSenha123');
     await page.click('button[type=submit]');
-    await page.waitForURL(/index\.html/, { timeout: 5000 });
-    assert(page.url().includes('index.html'), 'redireciona para index');
+    await page.waitForURL(/agenda\.html/, { timeout: 5000 });
+    assert(page.url().includes('agenda.html'), 'redireciona para agenda');
     await page._ctx.close();
   });
 
@@ -304,8 +304,9 @@ async function main() {
   await test('Dashboard carrega gráficos e elementos principais', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
-    // Títulos / KPI cards
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
+    await page.goto(`${BASE}/index.html`);
+    await page.waitForLoadState('networkidle', { timeout: 8000 });
     const body = await page.content();
     assert(body.includes('GRO') || body.includes('Saúde'), 'marca GRO Saúde na página');
     assert(body.includes('canvas') || body.includes('chart'), 'canvas de gráfico presente');
@@ -315,8 +316,10 @@ async function main() {
   await test('Usuário não-admin não vê botões admin-only', async () => {
     const page = await newPage();
     await loginAs(page, 'recepcao', 'gro2026');
-    // recepcao não tem mustChangePassword, deve ir para index
-    await page.waitForURL(/index\.html/, { timeout: 6000 });
+    // recepcao não tem mustChangePassword, redireciona para agenda
+    await page.waitForURL(/agenda\.html/, { timeout: 6000 });
+    await page.goto(`${BASE}/index.html`);
+    await page.waitForLoadState('networkidle', { timeout: 6000 });
     const syncBtn = await page.$('#syncBtn, [data-admin], .admin-only');
     if (syncBtn) {
       const display = await syncBtn.evaluate(el => window.getComputedStyle(el).display);
@@ -331,7 +334,7 @@ async function main() {
   await test('Agenda carrega e mostra slots de horário', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/agenda.html`);
     // Wait for ag-row slots to render (slots are .ag-row divs inside #agendaGrid)
     await page.waitForFunction(() => document.querySelectorAll('#agendaGrid .ag-row').length > 0, { timeout: 10000 });
@@ -343,7 +346,7 @@ async function main() {
   await test('Agenda mostra botão "Novo Agendamento" ou link de agendamento', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/agenda.html`);
     await page.waitForLoadState('networkidle', { timeout: 8000 });
     const body = await page.content();
@@ -360,7 +363,7 @@ async function main() {
   await test('Página agendamento.html carrega formulário', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/agendamento.html`);
     await page.waitForLoadState('networkidle', { timeout: 8000 });
     const body = await page.content();
@@ -372,7 +375,7 @@ async function main() {
   await test('Formulário de agendamento tem campos de exame e tipo', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/agendamento.html`);
     await page.waitForLoadState('networkidle', { timeout: 8000 });
     const body = await page.content();
@@ -386,7 +389,7 @@ async function main() {
   await test('Cadastros.html é bloqueado para usuário comum', async () => {
     const page = await newPage();
     await loginAs(page, 'recepcao', 'gro2026');
-    await page.waitForURL(/index\.html/, { timeout: 6000 });
+    await page.waitForURL(/agenda\.html/, { timeout: 6000 });
     await page.goto(`${BASE}/cadastros.html`);
     // Should redirect to index or show alert
     await page.waitForTimeout(1500);
@@ -402,7 +405,7 @@ async function main() {
   await test('Admin vê lista de exames no cadastros', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/cadastros.html`);
     await page.waitForFunction(() => document.getElementById('procList') !== null, { timeout: 6000 });
     const html = await page.$eval('#procList', el => el.innerHTML);
@@ -413,7 +416,7 @@ async function main() {
   await test('Admin adiciona novo exame com sucesso', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/cadastros.html`);
     await page.waitForFunction(() => document.getElementById('pNome') !== null, { timeout: 6000 });
     await page.fill('#pNome', 'Teste Fundoscopia');
@@ -430,7 +433,7 @@ async function main() {
   await test('Adicionar exame duplicado mostra erro', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/cadastros.html`);
     await page.waitForFunction(() => document.getElementById('pNome') !== null, { timeout: 6000 });
     await page.fill('#pNome', 'Exame Clínico');  // already in defaults
@@ -447,7 +450,7 @@ async function main() {
   await test('Admin adiciona tipo de exame', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/cadastros.html`);
     await page.waitForFunction(() => document.getElementById('tNome') !== null, { timeout: 6000 });
     await page.fill('#tNome', 'ASO Retorno Especial');
@@ -467,7 +470,7 @@ async function main() {
   await test('Página usuarios.html lista os usuários do sistema', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.getElementById('usersBody') !== null, { timeout: 6000 });
     const rows = await page.$$('#usersBody tr');
@@ -478,7 +481,7 @@ async function main() {
   await test('Admin pode criar novo usuário', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.getElementById('uName') !== null, { timeout: 6000 });
     await page.fill('#uName', 'Teste Operador');
@@ -499,7 +502,7 @@ async function main() {
   await test('Criar usuário com login duplicado é rejeitado', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.getElementById('uName') !== null, { timeout: 6000 });
     await page.fill('#uName', 'Duplicado');
@@ -518,7 +521,7 @@ async function main() {
   await test('Admin pode editar usuário existente', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.querySelectorAll('#usersBody .btn-edit').length > 0, { timeout: 6000 });
     // Click first non-admin edit button (to avoid self-edit complications)
@@ -543,7 +546,7 @@ async function main() {
   await test('Admin não pode excluir o único administrador', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.getElementById('usersBody') !== null, { timeout: 6000 });
     // Try to delete 'admin' via JS
@@ -556,7 +559,7 @@ async function main() {
   await test('Admin não pode excluir o próprio usuário logado', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.goto(`${BASE}/usuarios.html`);
     await page.waitForFunction(() => document.getElementById('usersBody') !== null, { timeout: 6000 });
     const result = await page.evaluate(() => GRO_AUTH.removerUsuario('admin'));
@@ -567,7 +570,7 @@ async function main() {
   await test('Usuário comum é bloqueado em usuarios.html', async () => {
     const page = await newPage();
     await loginAs(page, 'recepcao', 'gro2026');
-    await page.waitForURL(/index\.html/, { timeout: 6000 });
+    await page.waitForURL(/agenda\.html/, { timeout: 6000 });
     const handled = page.waitForEvent('dialog').then(d => d.accept()).catch(() => {});
     await page.goto(`${BASE}/usuarios.html`);
     await handled;
@@ -640,7 +643,7 @@ async function main() {
   await test('Header de navegação renderiza em index.html', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('gro-header')?.children.length > 0, { timeout: 5000 });
     const navHTML = await page.$eval('#gro-header', el => el.innerHTML);
     assert(navHTML.includes('nav') || navHTML.includes('menu') || navHTML.includes('GRO'), 'nav presente no header');
@@ -650,7 +653,7 @@ async function main() {
   await test('Link de logout está disponível no header', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('gro-header')?.children.length > 0, { timeout: 5000 });
     const body = await page.content();
     assert(body.toLowerCase().includes('logout') || body.toLowerCase().includes('sair'), 'link de logout presente');
@@ -660,7 +663,7 @@ async function main() {
   await test('Itens de menu só admin aparecem para o admin', async () => {
     const page = await newPage();
     await loginAs(page, 'admin', 'gro@2026');
-    await page.waitForURL(`${BASE}/index.html`, { timeout: 6000 });
+    await page.waitForURL(`${BASE}/agenda.html`, { timeout: 6000 });
     await page.waitForFunction(() => document.getElementById('gro-header')?.children.length > 0, { timeout: 5000 });
     const body = await page.content();
     assert(body.includes('usuari') || body.includes('Usuári') || body.includes('Gerenciar'), 'menu de usuários visível para admin');
