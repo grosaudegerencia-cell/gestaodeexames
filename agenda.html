@@ -76,7 +76,7 @@
       <input type="hidden" id="mId"/>
       <div class="mrow">
         <div class="mfield"><label>Data</label><input type="text" id="mData" readonly/></div>
-        <div class="mfield"><label>Horário</label><input type="text" id="mHora" readonly/></div>
+        <div class="mfield"><label>Horário</label><select id="mHora" onchange="document.getElementById('modalAg').dataset.hora=this.value"></select></div>
         <div class="mfield"><label>Status</label>
           <select id="mStatus">
             <option>Agendado</option><option>Confirmado</option><option>Realizado</option>
@@ -85,14 +85,17 @@
         </div>
       </div>
 
-      <!-- Paciente com autocomplete -->
+      <!-- Paciente (busca por nome) + CPF (busca por CPF) -->
       <div class="mrow">
         <div class="mfield grow mfield-rel">
           <label>Paciente / Colaborador *</label>
-          <input type="text" id="mPaciente" placeholder="Buscar por nome ou CPF..." oninput="buscarPaciente()" autocomplete="off"/>
+          <input type="text" id="mPaciente" placeholder="Buscar por nome..." oninput="buscarPaciente()" autocomplete="off"/>
           <div id="pacSugg" class="sugg-list" style="display:none"></div>
         </div>
-        <div class="mfield"><label>CPF</label><input type="text" id="mCpf" placeholder="000.000.000-00"/></div>
+        <div class="mfield mfield-rel"><label>CPF</label>
+          <input type="text" id="mCpf" placeholder="Buscar por CPF..." oninput="buscarPorCpf()" autocomplete="off"/>
+          <div id="cpfSugg" class="sugg-list" style="display:none"></div>
+        </div>
       </div>
 
       <!-- Empresa com botões Nova + Contabilidade -->
@@ -112,15 +115,21 @@
       <div class="mfield">
         <label>Procedimentos / Exames * <span class="mhint">(marque os que serão feitos)</span></label>
         <div id="mProcs" class="proc-checks"></div>
+        <div class="mrow-wrap" style="gap:.4rem;margin-top:.5rem">
+          <input type="text" id="novoProc" placeholder="Exame não listado? Cadastre aqui..." style="flex:1;min-width:180px" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarProcedimento();}"/>
+          <button type="button" class="btn-mini btn-mini-add" onclick="adicionarProcedimento()" title="Cadastrar novo exame">+ Adicionar exame</button>
+        </div>
       </div>
 
-      <!-- Médico com datalist + botão Novo -->
+      <!-- Médico com lista de cadastrados + botão Novo -->
       <div class="mrow">
         <div class="mfield grow">
           <label>Médico responsável</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
-            <input type="text" id="mMedico" list="medList" placeholder="Médico" style="flex:1;min-width:140px"/>
-            <datalist id="medList"></datalist>
+            <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
+              <input type="text" id="mMedico" placeholder="Clique para escolher ou digite..." autocomplete="off" style="width:100%" onfocus="buscarMedico()" oninput="buscarMedico()"/>
+              <div id="medSugg" class="sugg-list" style="display:none"></div>
+            </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novoMedicoModal()" title="Cadastrar médico">+ Novo</button>
           </div>
         </div>
@@ -358,16 +367,19 @@ function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
   const data = dataAtual();
   const hist = getExamesParaData(data).find(h => h.paciente === paciente && h.empresa === empresa);
   preencherSelectsModal();
+  preencherHorarios(hora);
   document.getElementById('modalTitle').textContent = 'Confirmar da Planilha';
   document.getElementById('mId').value       = '';
   document.getElementById('mData').value     = new Date(data+'T12:00').toLocaleDateString('pt-BR');
-  document.getElementById('mHora').value     = hora;
   document.getElementById('mPaciente').value = paciente;
+  document.getElementById('mCpf').value      = '';
+  document.getElementById('mMedico').value   = '';
   document.getElementById('mEmpresa').value  = empresa;
   document.getElementById('mTipo').value     = tipo;
   document.getElementById('mStatus').value   = status || 'Agendado';
+  document.getElementById('novoProc').value  = '';
+  fecharSuggs();
   document.getElementById('btnExcluir').style.display = 'none';
-  document.getElementById('modalAg').dataset.hora = hora;
   if (hist && hist.procs.length) {
     setTimeout(() => {
       hist.procs.forEach(p => {
@@ -383,11 +395,35 @@ function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
 function preencherSelectsModal() {
   const selTipo = document.getElementById('mTipo');
   selTipo.innerHTML = GRO_DB.getTipos().map(t=>`<option>${t}</option>`).join('');
+  renderProcChecks();
+  atualizarListaEmpresas();
+}
+
+function renderProcChecks(marcados) {
   const procs = GRO_DB.getProcedimentos();
   document.getElementById('mProcs').innerHTML = procs.map(p=>`
     <label class="proc-check"><input type="checkbox" value="${p.nome}"> ${p.nome}</label>`).join('');
-  atualizarListaEmpresas();
-  atualizarListaMedicos();
+  (marcados||[]).forEach(m => {
+    const cb = document.querySelector(`#mProcs input[value="${CSS.escape(m)}"]`);
+    if (cb) cb.checked = true;
+  });
+}
+
+// Preenche o select de horário com as vagas livres do dia (+ o horário atual em edição)
+function preencherHorarios(selected) {
+  const sel = document.getElementById('mHora');
+  if (!sel) return;
+  const data = dataAtual();
+  const ocupadas = new Set(GRO_DB.getPorData(data).map(a => a.hora));
+  const opts = [];
+  GRO_DB.gerarSlots().forEach(s => {
+    if (s.almoco) return;
+    if (!ocupadas.has(s.hora) || s.hora === selected) opts.push(s.hora);
+  });
+  if (selected && !opts.includes(selected)) opts.unshift(selected);
+  sel.innerHTML = opts.map(h => `<option value="${h}"${h===selected?' selected':''}>${h}</option>`).join('');
+  sel.value = selected;
+  document.getElementById('modalAg').dataset.hora = selected;
 }
 
 function atualizarListaEmpresas() {
@@ -411,15 +447,14 @@ function atualizarListaMedicos() {
 
 function novoAg(hora) {
   preencherSelectsModal();
+  preencherHorarios(hora);
   document.getElementById('modalTitle').textContent = 'Agendar vaga';
   document.getElementById('mId').value = '';
   document.getElementById('mData').value = new Date(dataAtual()+'T12:00').toLocaleDateString('pt-BR');
-  document.getElementById('mHora').value = hora;
-  ['mPaciente','mCpf','mEmpresa','mMedico','mObs'].forEach(id=>document.getElementById(id).value='');
+  ['mPaciente','mCpf','mEmpresa','mMedico','mObs','novoProc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mStatus').value = 'Agendado';
-  document.getElementById('pacSugg').style.display = 'none';
+  fecharSuggs();
   document.getElementById('btnExcluir').style.display = 'none';
-  document.getElementById('modalAg').dataset.hora = hora;
   document.getElementById('modalAg').classList.add('show');
 }
 
@@ -427,10 +462,10 @@ function editarAg(id) {
   const a = GRO_DB.getAgendamentos().find(x=>x.id===id);
   if (!a) return;
   preencherSelectsModal();
+  preencherHorarios(a.hora);
   document.getElementById('modalTitle').textContent = 'Editar agendamento';
   document.getElementById('mId').value = a.id;
   document.getElementById('mData').value = new Date(a.data+'T12:00').toLocaleDateString('pt-BR');
-  document.getElementById('mHora').value = a.hora;
   document.getElementById('mPaciente').value = a.paciente||'';
   document.getElementById('mCpf').value = a.cpf||'';
   document.getElementById('mEmpresa').value = a.empresa||'';
@@ -438,19 +473,25 @@ function editarAg(id) {
   document.getElementById('mMedico').value = a.medico||'';
   document.getElementById('mObs').value = a.obs||'';
   document.getElementById('mStatus').value = a.status||'Agendado';
-  document.getElementById('pacSugg').style.display = 'none';
+  document.getElementById('novoProc').value = '';
+  fecharSuggs();
   (a.procedimentos||[]).forEach(p=>{
     const cb = document.querySelector(`#mProcs input[value="${CSS.escape(p)}"]`);
     if (cb) cb.checked = true;
   });
   document.getElementById('btnExcluir').style.display = 'inline-flex';
-  document.getElementById('modalAg').dataset.hora = a.hora;
   document.getElementById('modalAg').classList.add('show');
 }
 
 function fecharModal() {
   document.getElementById('modalAg').classList.remove('show');
-  document.getElementById('pacSugg').style.display = 'none';
+  fecharSuggs();
+}
+
+function fecharSuggs() {
+  ['pacSugg','cpfSugg','medSugg'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
 }
 
 function salvarAg() {
@@ -464,7 +505,7 @@ function salvarAg() {
 
   const reg = {
     data: dataAtual(),
-    hora: document.getElementById('modalAg').dataset.hora,
+    hora: document.getElementById('mHora').value || document.getElementById('modalAg').dataset.hora,
     paciente, cpf: document.getElementById('mCpf').value.trim(),
     empresa, tipo, procedimentos: procs,
     medico: document.getElementById('mMedico').value.trim(),
@@ -485,7 +526,7 @@ function excluirAg() {
   fecharModal(); renderAgenda();
 }
 
-// ---------- AUTOCOMPLETE PACIENTE ----------
+// ---------- AUTOCOMPLETE PACIENTE (por nome) ----------
 function buscarPaciente() {
   const q = (document.getElementById('mPaciente').value || '').trim().toLowerCase();
   const sugg = document.getElementById('pacSugg');
@@ -496,7 +537,7 @@ function buscarPaciente() {
     if (!a.paciente) return;
     const key = a.paciente + '|' + (a.cpf||'');
     if (seen.has(key)) return;
-    if (a.paciente.toLowerCase().includes(q) || (a.cpf||'').includes(q)) {
+    if (a.paciente.toLowerCase().includes(q)) {
       seen.add(key);
       results.push({ nome: a.paciente, cpf: a.cpf||'' });
     }
@@ -510,10 +551,80 @@ function buscarPaciente() {
   sugg.style.display = 'block';
 }
 
+// ---------- AUTOCOMPLETE CPF (busca no próprio campo CPF) ----------
+function buscarPorCpf() {
+  const q = (document.getElementById('mCpf').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('cpfSugg');
+  if (q.length < 2) { sugg.style.display='none'; return; }
+  const seen = new Set();
+  const results = [];
+  GRO_DB.getAgendamentos().forEach(a => {
+    if (!a.cpf) return;
+    const key = (a.paciente||'') + '|' + a.cpf;
+    if (seen.has(key)) return;
+    if ((a.cpf||'').toLowerCase().includes(q)) {
+      seen.add(key);
+      results.push({ nome: a.paciente||'', cpf: a.cpf });
+    }
+  });
+  if (!results.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = results.slice(0,8).map(r => {
+    const ne = (r.nome||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const ce = r.cpf.replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarPaciente('${ne}','${ce}')"><strong>${r.cpf}</strong>${r.nome?'<small>'+r.nome+'</small>':''}</div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+
 function selecionarPaciente(nome, cpf) {
   document.getElementById('mPaciente').value = nome;
   document.getElementById('mCpf').value = cpf;
-  document.getElementById('pacSugg').style.display = 'none';
+  fecharSuggs();
+}
+
+// ---------- LISTA DE MÉDICOS (escolher cadastrados) ----------
+function listaMedicos() {
+  const saved = JSON.parse(localStorage.getItem('gro_medicos_cad')||'[]');
+  const fromHistory = [...new Set(GRO_DB.getAgendamentos().map(a=>a.medico).filter(Boolean))];
+  const map = {};
+  saved.forEach(m => { if (m && m.nome) map[m.nome] = { nome:m.nome, crm:m.crm||'' }; });
+  fromHistory.forEach(n => { if (!map[n]) map[n] = { nome:n, crm:'' }; });
+  return Object.values(map).sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function buscarMedico() {
+  const q = (document.getElementById('mMedico').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('medSugg');
+  let list = listaMedicos();
+  if (q) list = list.filter(m => m.nome.toLowerCase().includes(q) || (m.crm||'').toLowerCase().includes(q));
+  if (!list.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = list.slice(0,12).map(m => {
+    const ne = m.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarMedico('${ne}')"><strong>${m.nome}</strong>${m.crm?'<small>'+m.crm+'</small>':''}</div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+function selecionarMedico(nome) {
+  document.getElementById('mMedico').value = nome;
+  document.getElementById('medSugg').style.display = 'none';
+}
+
+// ---------- NOVO PROCEDIMENTO (cadastrar exame não listado) ----------
+function adicionarProcedimento() {
+  const inp = document.getElementById('novoProc');
+  const nome = (inp.value||'').trim();
+  if (!nome) { toast('Informe o nome do exame.','error'); return; }
+  const marcados = [...document.querySelectorAll('#mProcs input:checked')].map(c=>c.value);
+  const r = GRO_DB.addProcedimento(nome);
+  if (!r.ok) {
+    // Já existe: apenas marca o item correspondente
+    const existente = document.querySelector(`#mProcs input[value="${CSS.escape(nome)}"]`);
+    if (existente) { existente.checked = true; inp.value=''; toast('Exame já listado — marcado.','success'); return; }
+    toast(r.msg || 'Não foi possível cadastrar.', 'error'); return;
+  }
+  marcados.push(nome);
+  renderProcChecks(marcados);
+  inp.value = '';
+  toast('Exame cadastrado e marcado!','success');
 }
 
 // ---------- NOVA EMPRESA ----------
@@ -623,6 +734,11 @@ function toast(msg, tipo) {
   t.textContent = msg; t.className = `toast ${tipo} show`;
   setTimeout(()=>t.className=`toast ${tipo}`, 3000);
 }
+
+// Fecha as listas de sugestão ao clicar fora do campo
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.mfield-rel')) fecharSuggs();
+});
 </script>
 </body>
 </html>
