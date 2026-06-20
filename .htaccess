@@ -1,0 +1,21 @@
+# GRO Saúde — aplicativo estático hospedado em grosaude.com/agenda
+# Abre o login como página inicial da pasta
+DirectoryIndex login.html index.html
+
+# Esta pasta é um site estático próprio: não deixar as regras de
+# reescrita do WordPress (na raiz) interferirem nas URLs do app.
+<IfModule mod_rewrite.c>
+  RewriteEngine Off
+</IfModule>
+
+# Tipos corretos (caso o servidor não reconheça)
+AddType application/javascript .js
+AddType text/css .css
+
+# Cache leve dos arquivos estáticos
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/png "access plus 30 days"
+</IfModule>
