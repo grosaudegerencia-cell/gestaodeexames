@@ -1,1 +1,489 @@
-<!-- PLACEHOLDER: arquivo será substituído pelo conteúdo real -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clínica GRO Saúde — Dashboard de Evolução de Exames</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="data.js"></script>
+  <style>
+    :root {
+      --verde-escuro: #1b5e20;
+      --verde: #2e7d32;
+      --verde-medio: #388e3c;
+      --verde-claro: #4caf50;
+      --verde-suave: #a5d6a7;
+      --teal: #00695c;
+      --teal-claro: #00897b;
+      --branco: #ffffff;
+      --cinza-claro: #f4f7f4;
+      --cinza: #e0e7e0;
+      --cinza-escuro: #546e5a;
+      --texto: #1a2e1a;
+      --sombra: 0 2px 12px rgba(30,80,30,0.10);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--cinza-claro); color: var(--texto); min-height: 100vh; }
+    header { background: linear-gradient(135deg, var(--verde-escuro) 0%, var(--teal) 100%); color: var(--branco); box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+    .header-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 36px 16px; flex-wrap: wrap; gap: 12px; }
+    .header-logo { display: flex; align-items: center; gap: 16px; }
+    .logo-circle { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: white; letter-spacing: -1px; }
+    .header-title h1 { font-size: 1.7rem; font-weight: 800; }
+    .header-title p { font-size: 0.88rem; opacity: 0.82; margin-top: 2px; }
+    .header-meta { text-align: right; font-size: 0.82rem; opacity: 0.75; }
+    .header-nav { display: flex; gap: 4px; padding: 0 36px; border-top: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.12); overflow-x: auto; }
+    .nav-btn { padding: 11px 20px; background: transparent; border: none; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; text-transform: uppercase; white-space: nowrap; }
+    .nav-btn:hover { color: white; background: rgba(255,255,255,0.08); }
+    .nav-btn.active { color: white; border-bottom-color: #a5d6a7; background: rgba(255,255,255,0.10); }
+    main { padding: 28px 36px 40px; max-width: 1400px; margin: 0 auto; }
+    .filter-bar { background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 22px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: var(--sombra); border: 1px solid var(--cinza); }
+    .filter-bar label { font-size: 0.82rem; font-weight: 600; color: var(--cinza-escuro); }
+    .filter-bar select, .filter-bar input { padding: 7px 11px; border: 1px solid var(--cinza); border-radius: 8px; font-size: 0.83rem; background: var(--cinza-claro); color: var(--texto); outline: none; }
+    .filter-bar select:focus, .filter-bar input:focus { border-color: var(--verde-claro); box-shadow: 0 0 0 3px rgba(76,175,80,0.15); }
+    .filter-sep { flex: 1; }
+    .badge-total { background: var(--verde-escuro); color: white; border-radius: 20px; padding: 5px 14px; font-size: 0.82rem; font-weight: 700; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .kpi-card { background: white; border-radius: 14px; padding: 18px 20px; box-shadow: var(--sombra); border: 1px solid var(--cinza); display: flex; align-items: flex-start; gap: 12px; transition: transform 0.15s; }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .kpi-icon.verde { background: #e8f5e9; }
+    .kpi-icon.teal { background: #e0f2f1; }
+    .kpi-icon.amarelo { background: #fff8e1; }
+    .kpi-icon.vermelho { background: #ffebee; }
+    .kpi-icon.azul { background: #e3f2fd; }
+    .kpi-text .val { font-size: 1.9rem; font-weight: 800; line-height: 1.1; color: var(--verde-escuro); }
+    .kpi-text .lbl { font-size: 0.76rem; color: var(--cinza-escuro); font-weight: 500; margin-top: 2px; }
+    .kpi-text .pct { font-size: 0.76rem; color: #4caf50; font-weight: 700; margin-top: 4px; }
+    .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .charts-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .chart-card { background: white; border-radius: 14px; padding: 20px; box-shadow: var(--sombra); border: 1px solid var(--cinza); }
+    .chart-card h3 { font-size: 0.93rem; font-weight: 700; color: var(--verde-escuro); margin-bottom: 3px; }
+    .chart-card .subtitle { font-size: 0.73rem; color: var(--cinza-escuro); margin-bottom: 14px; }
+    .table-card { background: white; border-radius: 14px; padding: 20px; box-shadow: var(--sombra); border: 1px solid var(--cinza); margin-bottom: 22px; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+    .table-header h3 { font-size: 0.93rem; font-weight: 700; color: var(--verde-escuro); }
+    .table-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .table-controls select, .table-search { padding: 7px 12px; border: 1px solid var(--cinza); border-radius: 20px; font-size: 0.82rem; outline: none; }
+    .table-search { min-width: 200px; }
+    .table-controls select:focus, .table-search:focus { border-color: var(--verde-claro); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.81rem; }
+    thead th { background: var(--verde-escuro); color: white; padding: 9px 12px; text-align: left; font-weight: 600; font-size: 0.76rem; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--cinza); transition: background 0.12s; }
+    tbody tr:hover { background: #f0f9f0; }
+    tbody td { padding: 8px 12px; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 0.71rem; font-weight: 700; white-space: nowrap; }
+    .badge-realizado { background: #e8f5e9; color: #2e7d32; }
+    .badge-agendado { background: #e3f2fd; color: #1565c0; }
+    .badge-faltou { background: #ffebee; color: #c62828; }
+    .badge-cancelado { background: #fce4ec; color: #ad1457; }
+    .badge-reagendado { background: #fff8e1; color: #f57f17; }
+    .badge-tipo { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 0.70rem; font-weight: 600; background: #e8f5e9; color: #1b5e20; white-space: nowrap; }
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+    .pag-btn { padding: 5px 12px; border: 1px solid var(--cinza); border-radius: 8px; background: white; cursor: pointer; font-size: 0.80rem; color: var(--verde-escuro); font-weight: 600; transition: all 0.15s; }
+    .pag-btn:hover, .pag-btn.active { background: var(--verde-escuro); color: white; border-color: var(--verde-escuro); }
+    .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pag-info { font-size: 0.78rem; color: var(--cinza-escuro); }
+    .section { display: none; }
+    .section.active { display: block; }
+    footer { text-align: center; padding: 20px; font-size: 0.77rem; color: var(--cinza-escuro); border-top: 1px solid var(--cinza); background: white; }
+    @media (max-width: 900px) {
+      main { padding: 14px; }
+      .header-top { padding: 14px; }
+      .charts-row, .charts-row-3 { grid-template-columns: 1fr; }
+      .header-nav { padding: 0 14px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="header-top">
+    <div class="header-logo">
+      <div class="logo-circle">GRO</div>
+      <div class="header-title">
+        <h1>GRO Saúde</h1>
+        <p>Dashboard de Evolução de Exames &mdash; Medicina Ocupacional</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div id="update-date"></div>
+      <div>Base de dados integrada ao Google Drive</div>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="showSection(this,'visao-geral')">Visão Geral</button>
+    <button class="nav-btn" onclick="showSection(this,'por-periodo')">Por Período</button>
+    <button class="nav-btn" onclick="showSection(this,'por-tipo')">Por Tipo de Exame</button>
+    <button class="nav-btn" onclick="showSection(this,'por-procedimento')">Por Procedimento</button>
+    <button class="nav-btn" onclick="showSection(this,'tabela')">Tabela Detalhada</button>
+  </nav>
+</header>
+
+<main>
+  <!-- VISÃO GERAL -->
+  <div class="section active" id="visao-geral">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Evolução Mensal de Exames</h3>
+        <p class="subtitle">Total de exames realizados por mês</p>
+        <canvas id="chart-mensal" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Distribuição por Status</h3>
+        <p class="subtitle">Situação dos atendimentos</p>
+        <canvas id="chart-status" height="200"></canvas>
+      </div>
+    </div>
+    <div class="charts-row-3">
+      <div class="chart-card" style="grid-column:span 2">
+        <h3>Top 15 Procedimentos Realizados</h3>
+        <p class="subtitle">Exames mais realizados no período total</p>
+        <canvas id="chart-procs" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Tipos de ASO</h3>
+        <p class="subtitle">Distribuição por tipo de atendimento</p>
+        <canvas id="chart-tipos" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- POR PERÍODO -->
+  <div class="section" id="por-periodo">
+    <div class="filter-bar">
+      <label>Visualização:</label>
+      <select id="periodo-sel" onchange="updatePeriodoChart()">
+        <option value="diario">Diária</option>
+        <option value="semanal">Semanal</option>
+        <option value="mensal" selected>Mensal</option>
+        <option value="anual">Anual</option>
+      </select>
+      <label>Ano:</label>
+      <select id="ano-sel" onchange="updatePeriodoChart()">
+        <option value="todos">Todos</option>
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+      </select>
+      <div class="filter-sep"></div>
+      <span class="badge-total" id="periodo-badge">0 exames</span>
+    </div>
+    <div class="chart-card">
+      <h3 id="periodo-title">Evolução de Exames</h3>
+      <p class="subtitle" id="periodo-sub">Volume no período selecionado</p>
+      <canvas id="chart-periodo" height="280"></canvas>
+    </div>
+    <div class="kpi-grid" style="margin-top:18px" id="periodo-kpi"></div>
+  </div>
+
+  <!-- POR TIPO -->
+  <div class="section" id="por-tipo">
+    <div class="filter-bar">
+      <label>Tipo:</label>
+      <select id="tipo-filter" onchange="updateTipoSection()">
+        <option value="todos">Todos os tipos</option>
+      </select>
+      <div class="filter-sep"></div>
+      <span class="badge-total" id="tipo-badge">0 exames</span>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Evolução Mensal por Tipo de ASO</h3>
+        <p class="subtitle">Comparativo mensal entre tipos</p>
+        <canvas id="chart-tipo-mensal" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Proporção por Tipo</h3>
+        <p class="subtitle">Distribuição percentual total</p>
+        <canvas id="chart-tipo-pizza" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- POR PROCEDIMENTO -->
+  <div class="section" id="por-procedimento">
+    <div class="filter-bar">
+      <label>Procedimento:</label>
+      <select id="proc-filter" onchange="updateProcSection()">
+        <option value="todos">Todos</option>
+      </select>
+      <div class="filter-sep"></div>
+      <span class="badge-total" id="proc-badge">0 exames</span>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Evolução Mensal por Procedimento</h3>
+        <p class="subtitle">Volume ao longo do tempo</p>
+        <canvas id="chart-proc-mensal" height="260"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Ranking de Procedimentos</h3>
+        <p class="subtitle">Top 20 por volume realizado</p>
+        <canvas id="chart-proc-rank" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="section" id="tabela">
+    <div class="table-card">
+      <div class="table-header">
+        <h3>Registros Detalhados</h3>
+        <div class="table-controls">
+          <select id="tbl-tipo" onchange="filterTable()">
+            <option value="">Todos os tipos</option>
+          </select>
+          <select id="tbl-status" onchange="filterTable()">
+            <option value="">Todos os status</option>
+            <option>Realizado</option><option>Agendado</option>
+            <option>Faltou</option><option>Reagendado</option><option>Cancelado</option>
+          </select>
+          <input class="table-search" id="tbl-search" type="text" placeholder="Buscar paciente, empresa, procedimento..." oninput="filterTable()">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Procedimento</th><th>Empresa</th><th>Paciente</th><th>Status</th></tr></thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <strong>Clínica GRO Saúde</strong> &mdash; Medicina e Segurança do Trabalho &mdash; Dashboard de Evolução de Exames
+  &nbsp;|&nbsp; <span id="footer-date"></span>
+</footer>
+
+<script>
+const D=0,T=1,P=2,E=3,A=4,S=5;
+const PALETA=['#2e7d32','#00695c','#1565c0','#6a1b9a','#e65100','#558b2f','#00838f','#283593','#4527a0','#bf360c','#33691e','#006064','#0d47a1','#311b92','#b71c1c'];
+const charts={};
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function getMonth(s){return s?s.substring(0,7):''}
+function getYear(s){return s?s.substring(0,4):''}
+function getDay(s){return s||''}
+function getWeek(s){
+  const d=new Date(s),j=new Date(d.getFullYear(),0,1);
+  return d.getFullYear()+'-S'+String(Math.ceil(((d-j)/86400000+j.getDay()+1)/7)).padStart(2,'0');
+}
+function fmtMes(ym){
+  const [y,m]=ym.split('-');
+  return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m)]+'/'+y.substring(2);
+}
+function badgeSt(s){
+  const m={'Realizado':'badge-realizado','Agendado':'badge-agendado','Faltou':'badge-faltou','Cancelado':'badge-cancelado','Reagendado':'badge-reagendado'};
+  return `<span class="badge ${m[s]||'badge-realizado'}">${s}</span>`;
+}
+function showSection(btn,id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  const today=new Date().toLocaleDateString('pt-BR');
+  document.getElementById('update-date').textContent=today;
+  document.getElementById('footer-date').textContent=today;
+  // Populate selects
+  const tipos=[...new Set(EXAMES_RAW.map(r=>r[T]).filter(Boolean))].sort();
+  const procs=[...new Set(EXAMES_RAW.map(r=>r[P]).filter(Boolean))].sort();
+  tipos.forEach(v=>{
+    ['tipo-filter','tbl-tipo'].forEach(id=>{
+      const o=document.createElement('option');o.value=o.textContent=v;
+      document.getElementById(id).appendChild(o);
+    });
+  });
+  procs.forEach(v=>{
+    const o=document.createElement('option');o.value=o.textContent=v;
+    document.getElementById('proc-filter').appendChild(o);
+  });
+  renderKPIs();renderMensal();renderStatus();renderProcs();renderTipos();
+  updatePeriodoChart();updateTipoSection();updateProcSection();initTable();
+});
+function renderKPIs(){
+  const tot=EXAMES_RAW.length;
+  const real=EXAMES_RAW.filter(r=>r[S]==='Realizado').length;
+  const ag=EXAMES_RAW.filter(r=>r[S]==='Agendado').length;
+  const ft=EXAMES_RAW.filter(r=>r[S]==='Faltou').length;
+  const emp=new Set(EXAMES_RAW.map(r=>r[E])).size;
+  const now=new Date();
+  const tm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const pm=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const pms=pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0');
+  const thisMo=EXAMES_RAW.filter(r=>r[D].startsWith(tm)).length;
+  const prevMo=EXAMES_RAW.filter(r=>r[D].startsWith(pms)).length;
+  const chg=prevMo>0?Math.round((thisMo-prevMo)/prevMo*100):0;
+  const kpis=[
+    {v:tot.toLocaleString('pt-BR'),l:'Total de Exames',i:'📋',c:'verde',p:''},
+    {v:real.toLocaleString('pt-BR'),l:'Realizados',i:'✅',c:'teal',p:Math.round(real/tot*100)+'% do total'},
+    {v:ag.toLocaleString('pt-BR'),l:'Agendados',i:'📅',c:'azul',p:''},
+    {v:ft.toLocaleString('pt-BR'),l:'Faltaram',i:'⚠️',c:'vermelho',p:Math.round(ft/tot*100)+'% do total'},
+    {v:emp.toLocaleString('pt-BR'),l:'Empresas Atendidas',i:'🏢',c:'verde',p:''},
+    {v:thisMo.toLocaleString('pt-BR'),l:'Exames Mês Atual',i:'📈',c:'teal',p:chg!==0?(chg>0?'+':'')+chg+'% vs mês ant.':''},
+  ];
+  document.getElementById('kpi-grid').innerHTML=kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-icon ${k.c}">${k.i}</div>
+      <div class="kpi-text"><div class="val">${k.v}</div><div class="lbl">${k.l}</div>${k.p?`<div class="pct">${k.p}</div>`:''}</div>
+    </div>`).join('');
+}
+function renderMensal(){
+  const bm={};
+  EXAMES_RAW.forEach(r=>{const m=getMonth(r[D]);if(m)bm[m]=(bm[m]||0)+1;});
+  const keys=Object.keys(bm).sort();
+  dc('mensal');
+  charts['mensal']=new Chart(document.getElementById('chart-mensal'),{
+    type:'line',
+    data:{labels:keys.map(fmtMes),datasets:[{label:'Exames',data:keys.map(k=>bm[k]),fill:true,backgroundColor:'rgba(46,125,50,0.12)',borderColor:'#2e7d32',borderWidth:2.5,pointRadius:5,tension:0.35}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f0f0'}},x:{grid:{display:false}}}}
+  });
+}
+function renderStatus(){
+  const st={};
+  EXAMES_RAW.forEach(r=>{const s=r[S]||'?';st[s]=(st[s]||0)+1;});
+  const lbls=['Realizado','Agendado','Faltou','Reagendado','Cancelado'].filter(s=>st[s]);
+  const cols=['#2e7d32','#1565c0','#c62828','#f57f17','#ad1457'];
+  dc('status');
+  charts['status']=new Chart(document.getElementById('chart-status'),{
+    type:'doughnut',
+    data:{labels:lbls,datasets:[{data:lbls.map(s=>st[s]),backgroundColor:cols,borderWidth:2,borderColor:'white'}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} (${Math.round(c.raw/EXAMES_RAW.length*100)}%)`}}},cutout:'60%'}
+  });
+}
+function renderProcs(){
+  const pc={};
+  EXAMES_RAW.filter(r=>r[S]==='Realizado').forEach(r=>{if(r[P])pc[r[P]]=(pc[r[P]]||0)+1;});
+  const s=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  dc('procs');
+  charts['procs']=new Chart(document.getElementById('chart-procs'),{
+    type:'bar',
+    data:{labels:s.map(e=>e[0]),datasets:[{data:s.map(e=>e[1]),backgroundColor:s.map((_,i)=>PALETA[i%PALETA.length]+'cc'),borderColor:s.map((_,i)=>PALETA[i%PALETA.length]),borderWidth:1,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f0f0'}},x:{grid:{display:false},ticks:{font:{size:9},maxRotation:40}}}}
+  });
+}
+function renderTipos(){
+  const tc={};
+  EXAMES_RAW.forEach(r=>{if(r[T])tc[r[T]]=(tc[r[T]]||0)+1;});
+  const s=Object.entries(tc).sort((a,b)=>b[1]-a[1]);
+  dc('tipos');
+  charts['tipos']=new Chart(document.getElementById('chart-tipos'),{
+    type:'bar',
+    data:{labels:s.map(e=>e[0]),datasets:[{data:s.map(e=>e[1]),backgroundColor:PALETA.slice(0,s.length).map(c=>c+'cc'),borderColor:PALETA.slice(0,s.length),borderWidth:1,borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f0f0f0'}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+  });
+}
+function updatePeriodoChart(){
+  const per=document.getElementById('periodo-sel').value;
+  const ano=document.getElementById('ano-sel').value;
+  let data=EXAMES_RAW;
+  if(ano!=='todos')data=data.filter(r=>r[D].startsWith(ano));
+  const bk={};
+  data.forEach(r=>{
+    const k=per==='diario'?getDay(r[D]):per==='semanal'?getWeek(r[D]):per==='mensal'?getMonth(r[D]):getYear(r[D]);
+    if(k)bk[k]=(bk[k]||0)+1;
+  });
+  const keys=Object.keys(bk).sort();
+  const vals=keys.map(k=>bk[k]);
+  const tot=vals.reduce((a,b)=>a+b,0);
+  document.getElementById('periodo-badge').textContent=tot.toLocaleString('pt-BR')+' exames';
+  const titles={diario:'Diária',semanal:'Semanal',mensal:'Mensal',anual:'Anual'};
+  document.getElementById('periodo-title').textContent='Evolução '+titles[per]+' de Exames';
+  dc('periodo');
+  charts['periodo']=new Chart(document.getElementById('chart-periodo'),{
+    type:per==='anual'?'bar':'line',
+    data:{labels:per==='mensal'?keys.map(fmtMes):keys,datasets:[{label:'Exames',data:vals,fill:per!=='anual',backgroundColor:per==='anual'?'#2e7d32cc':'rgba(46,125,50,0.10)',borderColor:'#2e7d32',borderWidth:2.5,pointRadius:per==='diario'?2:4,tension:0.35,borderRadius:6}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f0f0'}},x:{grid:{display:false},ticks:{font:{size:per==='diario'?8:10},maxRotation:45}}}}
+  });
+  if(vals.length>0){
+    const mx=Math.max(...vals),mn=Math.min(...vals),av=Math.round(tot/vals.length);
+    document.getElementById('periodo-kpi').innerHTML=[
+      {v:mx,l:'Pico no período',i:'📈',c:'verde'},{v:av,l:'Média por período',i:'📊',c:'teal'},
+      {v:mn,l:'Mínimo',i:'📉',c:'azul'},{v:vals.length,l:'Períodos com dados',i:'📅',c:'verde'},
+    ].map(k=>`<div class="kpi-card"><div class="kpi-icon ${k.c}">${k.i}</div><div class="kpi-text"><div class="val">${k.v.toLocaleString('pt-BR')}</div><div class="lbl">${k.l}</div></div></div>`).join('');
+  }
+}
+function updateTipoSection(){
+  const tf=document.getElementById('tipo-filter').value;
+  let data=EXAMES_RAW;
+  if(tf!=='todos')data=data.filter(r=>r[T]===tf);
+  document.getElementById('tipo-badge').textContent=data.length.toLocaleString('pt-BR')+' exames';
+  const tipos=tf==='todos'?[...new Set(EXAMES_RAW.map(r=>r[T]).filter(Boolean))]:[tf];
+  const bm={};
+  data.forEach(r=>{
+    const m=getMonth(r[D]);if(!m)return;
+    if(!bm[m])bm[m]={};
+    tipos.forEach(t=>{if(!bm[m][t])bm[m][t]=0;});
+    if(bm[m][r[T]]!==undefined)bm[m][r[T]]++;
+  });
+  const months=Object.keys(bm).sort();
+  dc('tipo-mensal');
+  charts['tipo-mensal']=new Chart(document.getElementById('chart-tipo-mensal'),{
+    type:'bar',
+    data:{labels:months.map(fmtMes),datasets:tipos.map((t,i)=>({label:t,data:months.map(m=>(bm[m]&&bm[m][t])||0),backgroundColor:PALETA[i%PALETA.length]+'bb',borderColor:PALETA[i%PALETA.length],borderWidth:1,borderRadius:4}))},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},scales:{y:{beginAtZero:true,stacked:tf==='todos',grid:{color:'#f0f0f0'}},x:{stacked:tf==='todos',grid:{display:false},ticks:{font:{size:9},maxRotation:45}}}}
+  });
+  const tc={};data.forEach(r=>{if(r[T])tc[r[T]]=(tc[r[T]]||0)+1;});
+  const pl=Object.keys(tc).sort((a,b)=>tc[b]-tc[a]);
+  dc('tipo-pizza');
+  charts['tipo-pizza']=new Chart(document.getElementById('chart-tipo-pizza'),{
+    type:'doughnut',
+    data:{labels:pl,datasets:[{data:pl.map(t=>tc[t]),backgroundColor:PALETA.slice(0,pl.length).map(c=>c+'dd'),borderColor:'white',borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},cutout:'55%'}
+  });
+}
+function updateProcSection(){
+  const pf=document.getElementById('proc-filter').value;
+  let data=EXAMES_RAW;
+  if(pf!=='todos')data=data.filter(r=>r[P]===pf);
+  document.getElementById('proc-badge').textContent=data.length.toLocaleString('pt-BR')+' exames';
+  const bm={};data.forEach(r=>{const m=getMonth(r[D]);if(m)bm[m]=(bm[m]||0)+1;});
+  const months=Object.keys(bm).sort();
+  dc('proc-mensal');
+  charts['proc-mensal']=new Chart(document.getElementById('chart-proc-mensal'),{
+    type:'line',
+    data:{labels:months.map(fmtMes),datasets:[{label:pf==='todos'?'Todos':pf,data:months.map(m=>bm[m]),fill:true,backgroundColor:'rgba(0,105,92,0.10)',borderColor:'#00695c',borderWidth:2.5,pointRadius:4,tension:0.35}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f0f0'}},x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}}}}
+  });
+  const pc={};data.forEach(r=>{if(r[P])pc[r[P]]=(pc[r[P]]||0)+1;});
+  const sorted=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  dc('proc-rank');
+  charts['proc-rank']=new Chart(document.getElementById('chart-proc-rank'),{
+    type:'bar',
+    data:{labels:sorted.map(e=>e[0]),datasets:[{data:sorted.map(e=>e[1]),backgroundColor:sorted.map((_,i)=>PALETA[i%PALETA.length]+'bb'),borderColor:sorted.map((_,i)=>PALETA[i%PALETA.length]),borderWidth:1,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:'#f0f0f0'}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+  });
+}
+let tblData=[],tblFiltered=[],tblPage=1;const PG=25;
+function initTable(){tblData=EXAMES_RAW.slice().reverse();filterTable();}
+function filterTable(){
+  const srch=(document.getElementById('tbl-search').value||''). toLowerCase();
+  const tipo=document.getElementById('tbl-tipo').value||'';
+  const st=document.getElementById('tbl-status').value||'';
+  tblFiltered=tblData.filter(r=>{
+    if(tipo&&r[T]!==tipo)return false;
+    if(st&&r[S]!==st)return false;
+    if(srch&&!(r[A]+' '+r[E]+' '+r[P]).toLowerCase().includes(srch))return false;
+    return true;
+  });
+  tblPage=1;renderTbl();
+}
+function renderTbl(){
+  const start=(tblPage-1)*PG;
+  document.getElementById('tbl-body').innerHTML=tblFiltered.slice(start,start+PG).map(r=>`
+    <tr><td>${r[D]}</td><td><span class="badge-tipo">${r[T]}</span></td><td>${r[P]}</td><td>${r[E]}</td><td>${r[A]}</td><td>${badgeSt(r[S])}</td></tr>`).join('');
+  const tp=Math.ceil(tblFiltered.length/PG);
+  let h=`<span class="pag-info">${tblFiltered.length.toLocaleString('pt-BR')} registros &nbsp;|&nbsp; Pág. ${tblPage}/${tp}</span>`;
+  h+=`<button class="pag-btn" onclick="goPage(${tblPage-1})" ${tblPage<=1?'disabled':''}>◀</button>`;
+  for(let i=Math.max(1,tblPage-2);i<=Math.min(tp,tblPage+2);i++)
+    h+=`<button class="pag-btn ${i===tblPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  h+=`<button class="pag-btn" onclick="goPage(${tblPage+1})" ${tblPage>=tp?'disabled':''}>▶</button>`;
+  document.getElementById('pagination').innerHTML=h;
+}
+function goPage(p){tblPage=p;renderTbl();}
+</script>
+</body>
+</html>
